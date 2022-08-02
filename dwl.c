@@ -1658,7 +1658,8 @@ monocle(Monitor *m)
 		if (!VISIBLEON(c, m) || c->isfloating || c->isfullscreen)
 			continue;
 		if (!monoclegaps)
-			resize(c, m->w, 0, !smartborders);
+			resize(c, (struct wlr_box){.x = m->w.x, .y = m->w.y + smartbargaptop*smartbargaps,
+				.width = m->w.width, .height = m->w.height - (smartbargaptop+smartbargapbot)*smartbargaps}, 0, !smartborders);
 		else
 			resize(c, (struct wlr_box){.x = m->w.x + gappoh, .y = m->w.y + gappov,
 				.width = m->w.width - 2 * gappoh, .height = m->w.height - 2 * gappov}, 0, !smartborders);
@@ -2463,6 +2464,7 @@ void
 tile(Monitor *m)
 {
 	unsigned int i, n = 0, h, r, oe = enablegaps, ie = enablegaps, mw, my, ty, draw_borders = 1;
+  unsigned int sbg = 0; // flag for smart bar gap
 	Client *c;
 
 	wl_list_for_each(c, &clients, link)
@@ -2473,6 +2475,9 @@ tile(Monitor *m)
 	
 	if (smartgaps == n) {
 		oe = 0; // outer gaps disabled
+    if (smartbargaps) {
+      sbg = 1;
+    }
 	}
 
 	if (n == smartborders)
@@ -2483,19 +2488,19 @@ tile(Monitor *m)
 	else
 		mw = m->w.width - 2*m->gappov*oe + m->gappiv*ie;
 	i = 0;
-	my = ty = m->gappoh*oe;
+	my = ty = m->gappoh*oe + smartbargaptop*sbg;
 	wl_list_for_each(c, &clients, link) {
 		if (!VISIBLEON(c, m) || c->isfloating || c->isfullscreen)
 			continue;
 		if (i < m->nmaster) {
 			r = MIN(n, m->nmaster) - i;
-			h = (m->w.height - my - m->gappoh*oe - m->gappih*ie * (r - 1)) / r;
+			h = (m->w.height - my - m->gappoh*oe - smartbargapbot*sbg - m->gappih*ie * (r - 1)) / r;
 			resize(c, (struct wlr_box){.x = m->w.x + m->gappov*oe, .y = m->w.y + my,
 				.width = mw - m->gappiv*ie, .height = h}, 0, draw_borders);
 			my += c->geom.height + m->gappih*ie;
 		} else {
 			r = n - i;
-			h = (m->w.height - ty - m->gappoh*oe - m->gappih*ie * (r - 1)) / r;
+			h = (m->w.height - ty - m->gappoh*oe - smartbargapbot*sbg - m->gappih*ie * (r - 1)) / r;
 			resize(c, (struct wlr_box){.x = m->w.x + mw + m->gappov*oe, .y = m->w.y + ty,
 				.width = m->w.width - mw - 2*m->gappov*oe, .height = h}, 0, draw_borders);
 			ty += c->geom.height + m->gappih*ie;

@@ -15,6 +15,10 @@ static const float focuscolor[]     = {0.27, 0.53, 0.72, 1.0};
 /* To conform the xdg-protocol, set the alpha to zero to restore the old behavior */
 static const float fullscreen_bg[]  = {0.1, 0.1, 0.1, 1.0};
 static const int smartborders       = 1;
+// sometimes in smart gaps, we still want to leave a small outer gap for the bar
+static const int smartbargaps = 1; // 1 = enable
+static const int smartbargaptop = 0; // upper gap (pixels) if we in smartgaps mode
+static const int smartbargapbot = 8; // lower gap (pixels) if we in smartgaps mode
 
 /* tagging */
 static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
