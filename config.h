@@ -26,6 +26,7 @@ static const Rule rules[] = {
 	*/
 	{ "firefox",  NULL,       1 << 8,       1,           -1 }, // make firefox (and all its popups) floating
 	{ "firefox",  "Mozilla Firefox",       1 << 8,       0,           -1 }, // then unfloat the actual browser, leaving all popups floated
+	{ "file-",  NULL, 0,       1,           -1 },  // gimp's export file prompt should float
 	{ "pavucontrol-qt",  NULL, 0,       1,           -1 },
 };
 
