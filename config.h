@@ -19,6 +19,8 @@ static const int smartborders       = 1;
 static const int smartbargaps = 1; // 1 = enable
 static const int smartbargaptop = 0; // upper gap (pixels) if we in smartgaps mode
 static const int smartbargapbot = 8; // lower gap (pixels) if we in smartgaps mode
+static const char cursortheme[]     = "Future-cyan"; /* theme from /usr/share/cursors/xorg-x11 */
+static const unsigned int cursorsize = 24;
 
 /* tagging */
 static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };

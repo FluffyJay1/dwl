@@ -15,6 +15,8 @@ static const float focuscolor[]     = {1.0, 0.0, 0.0, 1.0};
 /* To conform the xdg-protocol, set the alpha to zero to restore the old behavior */
 static const float fullscreen_bg[]  = {0.1, 0.1, 0.1, 1.0};
 static const int smartborders       = 1;
+static const char cursortheme[]     = NULL; /* theme from /usr/share/cursors/xorg-x11 */
+static const unsigned int cursorsize = 24;
 
 /* tagging */
 static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
