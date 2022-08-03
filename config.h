@@ -186,6 +186,11 @@ static const Key keys[] = {
   // brightness control with laptop keys, requires acpilight and a changebrightness.sh script
   {0, XKB_KEY_XF86MonBrightnessUp, spawn, SHCMD("changebrightness.sh inc")},
   {0, XKB_KEY_XF86MonBrightnessDown, spawn, SHCMD("changebrightness.sh dec")},
+  
+  // screenshotting w/ prtscr button, requires prtscr, screenshot, snip scripts
+  {0, XKB_KEY_Print, spawn, SHCMD("prtscr")},
+  {WLR_MODIFIER_CTRL, XKB_KEY_Print, spawn, SHCMD("screenshot")},
+  {WLR_MODIFIER_CTRL|WLR_MODIFIER_SHIFT, XKB_KEY_Print, spawn, SHCMD("snip")},
 };
 
 static const Button buttons[] = {
