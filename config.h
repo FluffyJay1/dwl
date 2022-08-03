@@ -192,6 +192,9 @@ static const Key keys[] = {
   {0, XKB_KEY_Print, spawn, SHCMD("prtscr")},
   {WLR_MODIFIER_CTRL, XKB_KEY_Print, spawn, SHCMD("screenshot")},
   {WLR_MODIFIER_CTRL|WLR_MODIFIER_SHIFT, XKB_KEY_Print, spawn, SHCMD("snip")},
+
+  // sleep button = lock lol
+  {0, XKB_KEY_XF86Sleep, spawn, SHCMD("lock")},
 };
 
 static const Button buttons[] = {
