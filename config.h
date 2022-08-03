@@ -11,6 +11,7 @@ static const int smartgaps          = 1;        /* 1 means no outer gap when the
 static const int monoclegaps        = 0;        /* 1 means outer gaps in monocle layout */
 static const float rootcolor[]      = {0.3, 0.3, 0.3, 1.0};
 static const float bordercolor[]    = {0.07, 0.09, 0.11, 1.0};
+static const float floatcolor[]		= {0.13, 0.13, 0.07, 1.0};
 static const float focuscolor[]     = {0.27, 0.53, 0.72, 1.0};
 /* To conform the xdg-protocol, set the alpha to zero to restore the old behavior */
 static const float fullscreen_bg[]  = {0.1, 0.1, 0.1, 1.0};
