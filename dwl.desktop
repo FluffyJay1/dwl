@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=DWL
+Comment=dwm for Wayland
+Exec="/usr/local/bin/dwl -s /home/fluffyjay1/scripts/wlinit.sh"
+Type=Application
