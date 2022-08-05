@@ -24,6 +24,9 @@ static const char cursortheme[]     = "Future-cyan"; /* theme from /usr/share/cu
 static const unsigned int cursorsize = 24;
 static const int cursor_timeout = 5;
 
+/* pointer constraints */
+static const int allow_constrain      = 1;
+
 /* tagging */
 static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
 
