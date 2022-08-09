@@ -123,7 +123,7 @@ static const double accel_speed = 0.0;
 static const char *termcmd[] = { "footclient", NULL };
 static const char *menucmd[] = { "fuzzel",
 	"--icon-theme", "Papirus",
-	"--terminal", "alacritty", 
+	"--terminal", "footclient", 
 	"--horizontal-pad", "8",
 	"--vertical-pad", "12",
 	"--inner-pad", "4",
