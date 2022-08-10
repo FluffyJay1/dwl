@@ -76,7 +76,7 @@ static const int tap_to_click = 1;
 static const int tap_and_drag = 1;
 static const int drag_lock = 1;
 static const int natural_scrolling = 1;
-static const int disable_while_typing = 1;
+static const int disable_while_typing = 0;
 static const int left_handed = 0;
 static const int middle_button_emulation = 1; // left + right button at the same time
 /* You can choose between:
@@ -121,21 +121,7 @@ static const double accel_speed = 0.0;
 
 /* commands */
 static const char *termcmd[] = { "footclient", NULL };
-static const char *menucmd[] = { "fuzzel",
-	"--icon-theme", "Papirus",
-	"--terminal", "footclient", 
-	"--horizontal-pad", "8",
-	"--vertical-pad", "12",
-	"--inner-pad", "4",
-	"--background", "202830fa",
-	"--text-color", "838a90ff",
-	"--match-color", "30cca0ff",
-	"--selection-color", "104080fe",
-	"--selection-text-color", "ddeeffff",
-	"--border-width", "2",
-	"--border-radius", "0",
-	"--border-color", "4588b8f2",
-	NULL};
+static const char *menucmd[] = { "fuzzel",	NULL};
 
 static const Key keys[] = {
 	/* Note that Shift changes certain key codes: c -> C, 2 -> at, etc. */
