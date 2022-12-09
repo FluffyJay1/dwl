@@ -288,7 +288,7 @@ static void foreigndestroynotify(struct wl_listener *listener, void *data);
 static void foreignfullscreennotify(struct wl_listener *listener, void *data);
 static void foreignsetrectanglenotify(struct wl_listener *listener, void *data);
 static void fullscreennotify(struct wl_listener *listener, void *data);
-static void handlecursoractivity();
+static void handlecursoractivity(void);
 static void handleconstraintcommit(struct wl_listener *listener, void *data);
 static int hidecursor(void *data);
 static void incnmaster(const Arg *arg);
@@ -956,14 +956,13 @@ createmon(struct wl_listener *listener, void *data)
 	 * monitor) becomes available. */
 	struct wlr_output *wlr_output = data;
 	const MonitorRule *r;
-	size_t i;
 	Monitor *m = wlr_output->data = ecalloc(1, sizeof(*m));
 	m->wlr_output = wlr_output;
 
 	wlr_output_init_render(wlr_output, alloc, drw);
 
 	/* Initialize monitor state using configured rules */
-	for (i = 0; i < LENGTH(m->layers); i++)
+	for (size_t i = 0; i < LENGTH(m->layers); i++)
 		wl_list_init(&m->layers[i]);
 
 	m->gappih = gappih;
@@ -1487,7 +1486,8 @@ foreignsetrectanglenotify(struct wl_listener *listener, void *data)
 {
 	Client *c = wl_container_of(listener, c, foreign_set_rectangle);
   struct wlr_foreign_toplevel_handle_v1_set_rectangle_event *event = data;
-	Client *p = client_from_wlr_surface(event->surface);
+	Client *p = NULL;
+	int type = toplevel_from_wlr_surface(event->surface, &c, NULL);
   /* resize(c, (struct wlr_box) {.x = p->geom.x + event->x, .y = p->geom.y + event->y, */
   /*     .width = event->width, .height = event->height}, 0, 1); */
   resize(c, (struct wlr_box) {.x = p->geom.x + event->x, .y = p->geom.y + event->y,
@@ -2358,28 +2358,10 @@ setfullscreen(Client *c, int fullscreen)
 	if (fullscreen) {
 		c->prev = c->geom;
 		resize(c, c->mon->m, 0, 0);
-		/* The xdg-protocol specifies:
-		 *
-		 * If the fullscreened surface is not opaque, the compositor must make
-		 * sure that other screen content not part of the same surface tree (made
-		 * up of subsurfaces, popups or similarly coupled surfaces) are not
-		 * visible below the fullscreened surface.
-		 *
-		 * For brevity we set a black background for all clients
-		 */
-		if (!c->fullscreen_bg) {
-			c->fullscreen_bg = wlr_scene_rect_create(c->scene,
-				c->geom.width, c->geom.height, fullscreen_bg);
-			wlr_scene_node_lower_to_bottom(&c->fullscreen_bg->node);
-		}
 	} else {
 		/* restore previous size instead of arrange for floating windows since
 		 * client positions are set by the user and cannot be recalculated */
 		resize(c, c->prev, 0, 1);
-		if (c->fullscreen_bg) {
-			wlr_scene_node_destroy(&c->fullscreen_bg->node);
-			c->fullscreen_bg = NULL;
-		}
 	}
   if (c->foreign_toplevel) {
     wlr_foreign_toplevel_handle_v1_set_fullscreen(c->foreign_toplevel, fullscreen);
@@ -3155,7 +3137,7 @@ configurex11(struct wl_listener *listener, void *data)
 		return;
 	if (c->isfloating || c->type == X11Unmanaged)
 		resize(c, (struct wlr_box){.x = event->x, .y = event->y,
-				.width = event->width, .height = event->height}, 0);
+				.width = event->width, .height = event->height}, 0, 1);
 	else
 		arrange(c->mon);
 }
