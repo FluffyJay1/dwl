@@ -22,6 +22,7 @@
 #include <wlr/types/wlr_data_control_v1.h>
 #include <wlr/types/wlr_data_device.h>
 #include <wlr/types/wlr_export_dmabuf_v1.h>
+#include <wlr/types/wlr_foreign_toplevel_management_v1.h>
 #include <wlr/types/wlr_gamma_control_v1.h>
 #include <wlr/types/wlr_idle.h>
 #include <wlr/types/wlr_idle_inhibit_v1.h>
@@ -51,6 +52,9 @@
 #include <wlr/types/wlr_xcursor_manager.h>
 #include <wlr/types/wlr_xdg_activation_v1.h>
 #include <wlr/types/wlr_xdg_decoration_v1.h>
+#include <wlr/types/wlr_xdg_foreign_registry.h>
+#include <wlr/types/wlr_xdg_foreign_v1.h>
+#include <wlr/types/wlr_xdg_foreign_v2.h>
 #include <wlr/types/wlr_xdg_output_v1.h>
 #include <wlr/types/wlr_xdg_shell.h>
 #include <wlr/util/log.h>
@@ -113,6 +117,7 @@ typedef struct {
 		struct wlr_xdg_surface *xdg;
 		struct wlr_xwayland_surface *xwayland;
 	} surface;
+  struct wlr_foreign_toplevel_handle_v1 *foreign_toplevel;
 	struct wl_listener commit;
 	struct wl_listener map;
 	struct wl_listener maximize;
@@ -120,6 +125,11 @@ typedef struct {
 	struct wl_listener destroy;
 	struct wl_listener set_title;
 	struct wl_listener fullscreen;
+  struct wl_listener foreign_activate;
+  struct wl_listener foreign_fullscreen;
+  struct wl_listener foreign_close;
+  struct wl_listener foreign_set_rectangle;
+  struct wl_listener foreign_destroy;
 	struct wlr_box prev;  /* layout-relative, includes border */
 #ifdef XWAYLAND
 	struct wl_listener activate;
@@ -272,6 +282,11 @@ static void focusclient(Client *c, int lift);
 static void focusmon(const Arg *arg);
 static void focusstack(const Arg *arg);
 static Client *focustop(Monitor *m);
+static void foreignactivatenotify(struct wl_listener *listener, void *data);
+static void foreignclosenotify(struct wl_listener *listener, void *data);
+static void foreigndestroynotify(struct wl_listener *listener, void *data);
+static void foreignfullscreennotify(struct wl_listener *listener, void *data);
+static void foreignsetrectanglenotify(struct wl_listener *listener, void *data);
 static void fullscreennotify(struct wl_listener *listener, void *data);
 static void handlecursoractivity();
 static void handleconstraintcommit(struct wl_listener *listener, void *data);
@@ -397,6 +412,8 @@ struct wlr_pointer_constraints_v1 *pointer_constraints;
 struct wlr_pointer_constraint_v1 *active_constraint;
 static struct wl_listener constraint_commit;
 struct wlr_relative_pointer_manager_v1 *relative_pointer_manager;
+
+struct wlr_foreign_toplevel_manager_v1 *foreign_toplevel_manager;
 
 /* global event handlers */
 static struct wl_listener cursor_axis = {.notify = axisnotify};
@@ -1345,6 +1362,9 @@ focusclient(Client *c, int lift)
 				wlr_scene_rect_set_color(w->border[i], color);
 
 			client_activate_surface(old, 0);
+      if (w->foreign_toplevel) {
+        wlr_foreign_toplevel_handle_v1_set_activated(w->foreign_toplevel, false);
+      }
 		}
 	}
 
@@ -1365,6 +1385,9 @@ focusclient(Client *c, int lift)
 
 	/* Activate the new client */
 	client_activate_surface(client_surface(c), 1);
+  if (c->foreign_toplevel) {
+    wlr_foreign_toplevel_handle_v1_set_activated(c->foreign_toplevel, true);
+  }
 }
 
 void
@@ -1415,6 +1438,60 @@ focustop(Monitor *m)
 		if (VISIBLEON(c, m))
 			return c;
 	return NULL;
+}
+
+void
+foreignactivatenotify(struct wl_listener *listener, void *data)
+{
+  Client *c = wl_container_of(listener, c, foreign_activate);
+  /*struct wlr_foreign_toplevel_handle_v1_activated_event *event = data;*/
+
+  /* copied from urgent() */
+	if (c && c != selclient()) {
+		c->isurgent = 1;
+		printstatus();
+	}
+}
+
+static
+void foreignclosenotify(struct wl_listener *listener, void *data)
+{
+	Client *c = wl_container_of(listener, c, foreign_close);
+  client_send_close(c);
+}
+
+static
+void foreigndestroynotify(struct wl_listener *listener, void *data)
+{
+  /* hack to call destroynotify, assuming that fullscreennotify does nothing
+   * with the args */
+	Client *c = wl_container_of(listener, c, foreign_destroy);
+  wl_list_remove(&c->foreign_activate.link);
+  wl_list_remove(&c->foreign_fullscreen.link);
+  wl_list_remove(&c->foreign_close.link);
+  wl_list_remove(&c->foreign_set_rectangle.link);
+  wl_list_remove(&c->foreign_destroy.link);
+}
+
+void
+foreignfullscreennotify(struct wl_listener *listener, void *data)
+{
+  /* hack to call fullscreennotify, assuming that fullscreennotify does nothing
+   * with the args */
+	Client *c = wl_container_of(listener, c, foreign_fullscreen);
+  fullscreennotify(&c->fullscreen, data);
+}
+
+void
+foreignsetrectanglenotify(struct wl_listener *listener, void *data)
+{
+	Client *c = wl_container_of(listener, c, foreign_set_rectangle);
+  struct wlr_foreign_toplevel_handle_v1_set_rectangle_event *event = data;
+	Client *p = client_from_wlr_surface(event->surface);
+  /* resize(c, (struct wlr_box) {.x = p->geom.x + event->x, .y = p->geom.y + event->y, */
+  /*     .width = event->width, .height = event->height}, 0, 1); */
+  resize(c, (struct wlr_box) {.x = p->geom.x + event->x, .y = p->geom.y + event->y,
+      .width = event->width, .height = event->height}, 0, 1);
 }
 
 void
@@ -1700,8 +1777,15 @@ mapnotify(struct wl_listener *listener, void *data)
 	}
 	c->scene->node.data = c->scene_surface->node.data = c;
 
+  c->foreign_toplevel = wlr_foreign_toplevel_handle_v1_create(foreign_toplevel_manager);
+  LISTEN(&c->foreign_toplevel->events.request_activate, &c->foreign_activate, foreignactivatenotify);
+  LISTEN(&c->foreign_toplevel->events.request_fullscreen, &c->foreign_fullscreen, foreignfullscreennotify);
+  LISTEN(&c->foreign_toplevel->events.request_close, &c->foreign_close, foreignclosenotify);
+  LISTEN(&c->foreign_toplevel->events.set_rectangle, &c->foreign_set_rectangle, foreignsetrectanglenotify);
+  LISTEN(&c->foreign_toplevel->events.destroy, &c->foreign_destroy, foreigndestroynotify);
+
 #ifdef XWAYLAND
-	/* Handle unmanaged clients first so we can return prior create borders */
+  /* Handle unmanaged clients first so we can return prior create borders */
 	if (client_is_unmanaged(c)) {
 		client_get_geometry(c, &c->geom);
 		/* Unmanaged clients always are floating */
@@ -2297,6 +2381,9 @@ setfullscreen(Client *c, int fullscreen)
 			c->fullscreen_bg = NULL;
 		}
 	}
+  if (c->foreign_toplevel) {
+    wlr_foreign_toplevel_handle_v1_set_fullscreen(c->foreign_toplevel, fullscreen);
+  }
 	arrange(c->mon);
 	printstatus();
 }
@@ -2359,12 +2446,18 @@ setmon(Client *c, Monitor *m, unsigned int newtags)
 	/* TODO leave/enter is not optimal but works */
 	if (oldmon) {
 		wlr_surface_send_leave(client_surface(c), oldmon->wlr_output);
+    if (c->foreign_toplevel) {
+      wlr_foreign_toplevel_handle_v1_output_leave(c->foreign_toplevel, oldmon->wlr_output);
+    }
 		arrange(oldmon);
 	}
 	if (m) {
 		/* Make sure window actually overlaps with the monitor */
 		resize(c, c->geom, 0, 1);
 		wlr_surface_send_enter(client_surface(c), m->wlr_output);
+    if (c->foreign_toplevel) {
+      wlr_foreign_toplevel_handle_v1_output_enter(c->foreign_toplevel, m->wlr_output);
+    }
 		c->tags = newtags ? newtags : m->tagset[m->seltags]; /* assign tags of target monitor */
 		setfullscreen(c, c->isfullscreen); /* This will call arrange(c->mon) */
 	}
@@ -2549,6 +2642,11 @@ setup(void)
 
 	hide_source = wl_event_loop_add_timer(wl_display_get_event_loop(dpy),
 			hidecursor, cursor);
+
+  foreign_toplevel_manager = wlr_foreign_toplevel_manager_v1_create(dpy);
+  struct wlr_xdg_foreign_registry *foreign_registry = wlr_xdg_foreign_registry_create(dpy);
+  wlr_xdg_foreign_v1_create(dpy, foreign_registry);
+  wlr_xdg_foreign_v2_create(dpy, foreign_registry);
 
 	/*
 	 * Configures a seat, which is a single "seat" at which a user sits and
@@ -2796,6 +2894,11 @@ unmapnotify(struct wl_listener *listener, void *data)
 	if (c->mon)
 		c->mon->un_map = 1;
 
+  if (c->foreign_toplevel) {
+    wlr_foreign_toplevel_handle_v1_destroy(c->foreign_toplevel);
+    c->foreign_toplevel = NULL;
+  }
+
 	if (client_is_unmanaged(c)) {
 		if (c == exclusive_focus)
 			exclusive_focus = NULL;
@@ -3035,8 +3138,12 @@ activatex11(struct wl_listener *listener, void *data)
 	Client *c = wl_container_of(listener, c, activate);
 
 	/* Only "managed" windows can be activated */
-	if (c->type == X11Managed)
+	if (c->type == X11Managed) {
 		wlr_xwayland_surface_activate(c->surface.xwayland, 1);
+    if (c->foreign_toplevel) {
+      wlr_foreign_toplevel_handle_v1_set_activated(c->foreign_toplevel, true);
+    }
+  }
 }
 
 void
