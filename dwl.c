@@ -2139,6 +2139,8 @@ printstatus(void)
 			if (c->isurgent)
 				urg |= c->tags;
 		}
+
+		printf("%s selmon %u\n", m->wlr_output->name, m == selmon);
 		if ((c = focustop(m))) {
 			printf("%s title %s\n", m->wlr_output->name, client_get_title(c));
 			printf("%s appid %s\n", m->wlr_output->name, client_get_appid(c));
@@ -2153,11 +2155,11 @@ printstatus(void)
 			sel = 0;
 		}
 
-		printf("%s selmon %u\n", m->wlr_output->name, m == selmon);
 		printf("%s tags %u %u %u %u\n", m->wlr_output->name, occ, m->tagset[m->seltags],
 				sel, urg);
 		printf("%s layout %s\n", m->wlr_output->name, m->lt[m->sellt]->symbol);
 	}
+  printf("cycle\n");
 	fflush(stdout);
 }
 
