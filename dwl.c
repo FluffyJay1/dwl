@@ -547,6 +547,7 @@ arrange(Monitor *m)
 	if (m && m->lt[m->sellt]->arrange)
 		m->lt[m->sellt]->arrange(m);
 	motionnotify(0);
+	checkidleinhibitor(NULL);
 }
 
 void
@@ -700,8 +701,8 @@ checkidleinhibitor(struct wlr_surface *exclude)
 	wl_list_for_each(inhibitor, &idle_inhibit_mgr->inhibitors, link) {
 		struct wlr_surface *surface = wlr_surface_get_root_surface(inhibitor->surface);
 		struct wlr_scene_tree *tree = surface->data;
-		if (bypass_surface_visibility || (exclude != surface
-				&& tree->node.enabled)) {
+		if (exclude != surface && (bypass_surface_visibility || (!tree
+				|| tree->node.enabled))) {
 			inhibited = 1;
 			break;
 		}
@@ -1366,9 +1367,7 @@ focusclient(Client *c, int lift)
       }
 		}
 	}
-
 	printstatus();
-	checkidleinhibitor(NULL);
 
 	if (!c) {
 		/* With no client, all we have left is to clear focus */
@@ -1404,7 +1403,7 @@ void
 focusstack(const Arg *arg)
 {
 	/* Focus the next or previous client (in tiling order) on selmon */
-	Client *c, *sel = selclient();
+	Client *c, *sel = focustop(selmon);
 	if (!sel || sel->isfullscreen)
 		return;
 	if (arg->i > 0) {
