@@ -2278,11 +2278,11 @@ run(char *startup_cmd)
 	}
 	/* If nobody is reading the status output, don't terminate */
 	signal(SIGPIPE, SIG_IGN);
-	printstatus();
 
 	/* At this point the outputs are initialized, choose initial selmon based on
 	 * cursor position, and set default cursor image */
 	selmon = xytomon(cursor->x, cursor->y);
+	printstatus();
 
 	/* TODO hack to get cursor to display in its initial location (100, 100)
 	 * instead of (0, 0) and then jumping.  still may not be fully
