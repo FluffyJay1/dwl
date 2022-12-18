@@ -2280,8 +2280,22 @@ run(char *startup_cmd)
 	signal(SIGPIPE, SIG_IGN);
 
 	/* At this point the outputs are initialized, choose initial selmon based on
-	 * cursor position, and set default cursor image */
-	selmon = xytomon(cursor->x, cursor->y);
+	 * a configured priority list, and set default cursor image */
+  Monitor *m;
+	for (const char** r = main_mon_priority; r < END(main_mon_priority); r++) {
+    wl_list_for_each(m, &mons, link) {
+      if (strstr(m->wlr_output->name, *r)) {
+        selmon = m;
+        break;
+      }
+    }
+    if (selmon) {
+      break;
+    }
+  }
+  if (!selmon) {
+    selmon = xytomon(cursor->x, cursor->y);
+  }
 	printstatus();
 
 	/* TODO hack to get cursor to display in its initial location (100, 100)
