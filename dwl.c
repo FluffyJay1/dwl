@@ -1397,6 +1397,10 @@ focusmon(const Arg *arg)
 			selmon = dirtomon(arg->i);
 		while (!selmon->wlr_output->enabled && i++ < nmons);
 	focusclient(focustop(selmon), 1);
+  if (focusmoncmd) {
+    Arg spawncmd = {.v = (const char*[]){focusmoncmd, selmon->wlr_output->name, NULL}};
+    spawn(&spawncmd);
+  }
 }
 
 void
