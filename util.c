@@ -33,3 +33,13 @@ ecalloc(size_t nmemb, size_t size)
 		die("calloc:");
 	return p;
 }
+
+void *
+erealloc(void *p, size_t n)
+{
+	void *ret;
+
+	if (!(ret = realloc(p, n)))
+		die("realloc:");
+	return ret;
+}

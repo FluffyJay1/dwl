@@ -277,7 +277,7 @@ static void destroynotify(struct wl_listener *listener, void *data);
 static void destroysessionlock(struct wl_listener *listener, void *data);
 static void destroysessionmgr(struct wl_listener *listener, void *data);
 static void destroypointerconstraint(struct wl_listener *listener, void *data);
-static Monitor *dirtomon(enum wlr_direction dir);
+static Monitor *dirtomon(Monitor *from, enum wlr_direction dir);
 static void focusclient(Client *c, int lift);
 static void focusmon(const Arg *arg);
 static void focusstack(const Arg *arg);
@@ -308,6 +308,7 @@ static void locksession(struct wl_listener *listener, void *data);
 static void maplayersurfacenotify(struct wl_listener *listener, void *data);
 static void mapnotify(struct wl_listener *listener, void *data);
 static void maximizenotify(struct wl_listener *listener, void *data);
+static int moncompare(const void *a, const void *b);
 static void monocle(Monitor *m);
 static void movestack(const Arg *arg);
 static void motionabsolute(struct wl_listener *listener, void *data);
@@ -407,6 +408,9 @@ static struct wl_list mons;
 static Monitor *selmon;
 
 static int enablegaps = 1;   /* enables gaps, used by togglegaps */
+
+static size_t mons_sorted_length; /* just to be extra sure we don't segfault because the mons list changed size */
+static Monitor **mons_sorted;
 
 struct wlr_pointer_constraints_v1 *pointer_constraints;
 struct wlr_pointer_constraint_v1 *active_constraint;
@@ -791,7 +795,6 @@ closemon(Monitor *m)
 			setmon(c, selmon, c->tags);
 	}
 	focusclient(focustop(selmon), 1);
-	printstatus();
 }
 
 void
@@ -1003,7 +1006,6 @@ createmon(struct wl_listener *listener, void *data)
 	wlr_output_commit(wlr_output);
 
 	wl_list_insert(&mons, &m->link);
-	printstatus();
 
 	/* The xdg-protocol specifies:
 	 *
@@ -1295,19 +1297,19 @@ destroysessionmgr(struct wl_listener *listener, void *data)
 }
 
 Monitor *
-dirtomon(enum wlr_direction dir)
+dirtomon(Monitor *from, enum wlr_direction dir)
 {
 	struct wlr_output *next;
-	if (wlr_output_layout_get(output_layout, selmon->wlr_output)
+	if (wlr_output_layout_get(output_layout, from->wlr_output)
 			&& (next = wlr_output_layout_adjacent_output(output_layout,
-			dir, selmon->wlr_output, selmon->m.x, selmon->m.y)))
+			dir, from->wlr_output, from->m.x, from->m.y)))
 		return next->data;
-	if (wlr_output_layout_get(output_layout, selmon->wlr_output)
+	if (wlr_output_layout_get(output_layout, from->wlr_output)
 			&& (next = wlr_output_layout_farthest_output(output_layout,
 			dir ^ (WLR_DIRECTION_LEFT|WLR_DIRECTION_RIGHT),
-			selmon->wlr_output, selmon->m.x, selmon->m.y)))
+			from->wlr_output, from->m.x, from->m.y)))
 		return next->data;
-	return selmon;
+	return from;
 }
 
 void
@@ -1394,7 +1396,7 @@ focusmon(const Arg *arg)
 	int i = 0, nmons = wl_list_length(&mons);
 	if (nmons)
 		do /* don't switch to disabled mons */
-			selmon = dirtomon(arg->i);
+			selmon = dirtomon(selmon, arg->i);
 		while (!selmon->wlr_output->enabled && i++ < nmons);
 	focusclient(focustop(selmon), 1);
   if (focusmoncmd) {
@@ -1853,6 +1855,20 @@ maximizenotify(struct wl_listener *listener, void *data)
 	wlr_xdg_surface_schedule_configure(c->surface.xdg);
 }
 
+// comaparison func for sorting monitors left-to-right
+int
+moncompare(const void *a, const void *b)
+{
+  Monitor *m1 = *(Monitor **) a, *m2 = *(Monitor **) b;
+  if (m1->m.x > m2->m.x) {
+    return 1;
+  } else if (m1->m.x < m2->m.x) {
+    return -1;
+  } else {
+    return 0;
+  }
+}
+
 void
 monocle(Monitor *m)
 {
@@ -2129,11 +2145,14 @@ pointerfocus(Client *c, struct wlr_surface *surface, double sx, double sy,
 void
 printstatus(void)
 {
-	Monitor *m = NULL;
 	Client *c;
 	unsigned int occ, urg, sel;
 
-	wl_list_for_each(m, &mons, link) {
+  for (int i = 0; i < mons_sorted_length; i++) {
+    Monitor *m = mons_sorted[i];
+		if (!m->wlr_output->enabled) {
+			continue;
+    }
 		occ = urg = 0;
 		wl_list_for_each(c, &clients, link) {
 			if (c->mon != m)
@@ -2729,7 +2748,7 @@ tagmon(const Arg *arg)
 {
 	Client *sel = selclient();
 	if (sel)
-		setmon(sel, dirtomon(arg->i), 0);
+		setmon(sel, dirtomon(selmon, arg->i), 0);
 }
 
 void
@@ -2991,6 +3010,17 @@ updatemons(struct wl_listener *listener, void *data)
 	}
 
 	wlr_output_manager_v1_set_configuration(output_mgr, config);
+
+  // sort mons from left to right and store result
+  int i = 0;
+  mons_sorted_length = wl_list_length(&mons);
+  mons_sorted = erealloc(mons_sorted, sizeof(Monitor*) * mons_sorted_length);
+  wl_list_for_each(m, &mons, link) {
+    mons_sorted[i++] = m;
+  }
+  qsort(mons_sorted, mons_sorted_length, sizeof(Monitor*), moncompare);
+
+  printstatus(); // the order of monitors has changed
 }
 
 void
