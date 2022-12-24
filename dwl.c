@@ -270,6 +270,7 @@ static void createpointerconstraint(struct wl_listener *listener, void *data);
 static void cursorframe(struct wl_listener *listener, void *data);
 static void destroydragicon(struct wl_listener *listener, void *data);
 static void defaultgaps(const Arg *arg);
+static void describeclient(const Arg *arg);
 static void destroyidleinhibitor(struct wl_listener *listener, void *data);
 static void destroylayersurfacenotify(struct wl_listener *listener, void *data);
 static void destroylock(SessionLock *lock, int unlocked);
@@ -1207,6 +1208,31 @@ void
 defaultgaps(const Arg *arg)
 {
 	setgaps(gappoh, gappov, gappih, gappiv);
+}
+
+void
+describeclient(const Arg *arg)
+{
+  if (describeclientcmd) {
+    Client *c;
+		xytonode(cursor->x, cursor->y, NULL, &c, NULL, NULL, NULL);
+    if (c) {
+      const char *flagtostring[] = {"false", "true"};
+      const char tagstr[(LENGTH(tags) + 5) / 3] = {0};
+      snprintf(tagstr, LENGTH(tagstr), "%u", c->tags);
+      Arg spawncmd = {.v = (const char*[]){describeclientcmd,
+        client_get_appid(c),
+        client_get_title(c),
+        tagstr,
+        c->mon->wlr_output->name,
+        flagtostring[c->isfloating],
+        flagtostring[c->isurgent],
+        flagtostring[c->isfullscreen],
+        NULL
+      }};
+      spawn(&spawncmd);
+    }
+  }
 }
 
 void

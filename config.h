@@ -138,7 +138,10 @@ static const enum libinput_config_tap_button_map button_map = LIBINPUT_CONFIG_TA
 /* commands */
 static const char *termcmd[] = { "footclient", NULL };
 static const char *menucmd[] = { "fuzzel",	NULL};
+/* command that gets run when you focus a new monitor via keyboard, output name gets passed as the first argument */
 static const char *focusmoncmd = "focusmon.sh";
+/* command that accepts args from the describeclient function (configured mod + shift + lmb) */
+static const char *describeclientcmd = "describeclient.sh";
 
 static const Key keys[] = {
 	/* Note that Shift changes certain key codes: c -> C, 2 -> at, etc. */
@@ -210,4 +213,5 @@ static const Button buttons[] = {
 	{ MODKEY, BTN_LEFT,   moveresize,     {.ui = CurMove} },
 	{ MODKEY, BTN_MIDDLE, togglefloating, {0} },
 	{ MODKEY, BTN_RIGHT,  moveresize,     {.ui = CurResize} },
+  { MODKEY|WLR_MODIFIER_SHIFT, BTN_LEFT, describeclient, {0} },
 };
