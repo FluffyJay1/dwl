@@ -19,6 +19,7 @@ static const int smartborders       = 1;
 static const char cursortheme[]     = NULL; /* theme from /usr/share/cursors/xorg-x11 */
 static const unsigned int cursorsize = 24;
 static const int cursor_timeout = 5;
+static const int mons_view_same_tag = 0; /* Whether changing which tag to view affects all monitors or just the current one */
 
 /* pointer constraints */
 static const int allow_constrain      = 1;

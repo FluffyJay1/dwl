@@ -413,6 +413,9 @@ static int enablegaps = 1;   /* enables gaps, used by togglegaps */
 static size_t mons_sorted_length; /* just to be extra sure we don't segfault because the mons list changed size */
 static Monitor **mons_sorted;
 
+static unsigned int global_seltags = 0;
+static unsigned int global_tagset[2] = {1, 1};
+
 struct wlr_pointer_constraints_v1 *pointer_constraints;
 struct wlr_pointer_constraint_v1 *active_constraint;
 static struct wl_listener constraint_commit;
@@ -982,7 +985,7 @@ createmon(struct wl_listener *listener, void *data)
 	m->gappiv = gappiv;
 	m->gappoh = gappoh;
 	m->gappov = gappov;
-	m->tagset[0] = m->tagset[1] = 1;
+	m->tagset[0] = m->tagset[1] = mons_view_same_tag ? global_tagset[global_seltags] : 1;
 	for (r = monrules; r < END(monrules); r++) {
 		if (!r->name || strstr(wlr_output->name, r->name)) {
 			m->mfact = r->mfact;
@@ -2844,41 +2847,56 @@ toggletag(const Arg *arg)
 void
 toggleview(const Arg *arg)
 {
-	unsigned int newtagset = selmon ? selmon->tagset[selmon->seltags] ^ (arg->ui & TAGMASK) : 0;
+	unsigned int newtagset;
+  if (mons_view_same_tag) {
+    newtagset = global_tagset[global_seltags] ^ (arg->ui & TAGMASK);
+  } else {
+    newtagset = selmon ? selmon->tagset[selmon->seltags] ^ (arg->ui & TAGMASK) : 0;
+  }
 	int i;
 
 	if (newtagset) {
-		selmon->tagset[selmon->seltags] = newtagset;
+    global_tagset[global_seltags] = newtagset;
 
-		if (newtagset == ~0) {
-			selmon->pertag->prevtag = selmon->pertag->curtag;
-			selmon->pertag->curtag = 0;
-		}
+    Monitor *m; // "m" replaced "selmon" in the original code
+    wl_list_for_each(m, &mons, link) {
+      if (!mons_view_same_tag) {
+        m = selmon;
+      }
+      m->tagset[m->seltags] = newtagset;
 
-		/* test if the user did not select the same tag */
-		if (!(newtagset & 1 << (selmon->pertag->curtag - 1))) {
-			selmon->pertag->prevtag = selmon->pertag->curtag;
-			for (i = 0; !(newtagset & 1 << i); i++) ;
-			selmon->pertag->curtag = i + 1;
-		}
+      if (newtagset == ~0) {
+        m->pertag->prevtag = m->pertag->curtag;
+        m->pertag->curtag = 0;
+      }
 
-		/* apply settings for this view */
-		selmon->nmaster = selmon->pertag->nmasters[selmon->pertag->curtag];
-		selmon->mfact = selmon->pertag->mfacts[selmon->pertag->curtag];
-		selmon->sellt = selmon->pertag->sellts[selmon->pertag->curtag];
-		selmon->lt[selmon->sellt] = selmon->pertag->ltidxs[selmon->pertag->curtag][selmon->sellt];
-		selmon->lt[selmon->sellt^1] = selmon->pertag->ltidxs[selmon->pertag->curtag][selmon->sellt^1];
+      /* test if the user did not select the same tag */
+      if (!(newtagset & 1 << (m->pertag->curtag - 1))) {
+        m->pertag->prevtag = m->pertag->curtag;
+        for (i = 0; !(newtagset & 1 << i); i++) ;
+        m->pertag->curtag = i + 1;
+      }
 
-		focusclient(focustop(selmon), 1);
-		arrange(selmon);
-	}
-	printstatus();
+      /* apply settings for this view */
+      m->nmaster = m->pertag->nmasters[m->pertag->curtag];
+      m->mfact = m->pertag->mfacts[m->pertag->curtag];
+      m->sellt = m->pertag->sellts[m->pertag->curtag];
+      m->lt[m->sellt] = m->pertag->ltidxs[m->pertag->curtag][m->sellt];
+      m->lt[m->sellt^1] = m->pertag->ltidxs[m->pertag->curtag][m->sellt^1];
+      arrange(m);
+      if (!mons_view_same_tag) {
+        break;
+      }
+    }
+    focusclient(focustop(selmon), 1);
+  }
+  printstatus();
 }
 
-void
+  void
 unlocksession(struct wl_listener *listener, void *data)
 {
-	SessionLock *lock = wl_container_of(listener, lock, unlock);
+  SessionLock *lock = wl_container_of(listener, lock, unlock);
 	destroylock(lock, 1);
 }
 
@@ -3047,37 +3065,56 @@ urgent(struct wl_listener *listener, void *data)
 void
 view(const Arg *arg)
 {
-	if (!selmon || (arg->ui & TAGMASK) == selmon->tagset[selmon->seltags])
-    return;
-
 	int i;
 	unsigned int tmptag;
 
-	selmon->seltags ^= 1; /* toggle sel tagset */
-	if (arg->ui & TAGMASK) {
-		selmon->tagset[selmon->seltags] = arg->ui & TAGMASK;
-		selmon->pertag->prevtag = selmon->pertag->curtag;
+  if (mons_view_same_tag) {
+    if (arg->ui & TAGMASK == global_tagset[global_seltags]) {
+      return;
+    }
+  } else {
+    if (!selmon || (arg->ui & TAGMASK) == selmon->tagset[selmon->seltags]) {
+      return;
+    }
+  }
+  global_seltags ^= 1;
+  if (arg->ui & TAGMASK) {
+    global_tagset[global_seltags] = arg->ui & TAGMASK;
+  }
+  Monitor *m; // "m" replaced "selmon" in the original code
+  wl_list_for_each(m, &mons, link) {
+    if (!mons_view_same_tag) {
+      m = selmon;
+    }
+    m->seltags ^= 1; /* toggle sel tagset */
+    if (arg->ui & TAGMASK) {
+      m->tagset[m->seltags] = arg->ui & TAGMASK;
+      m->pertag->prevtag = m->pertag->curtag;
 
-		if (arg->ui == ~0)
-			selmon->pertag->curtag = 0;
-		else {
-			for (i = 0; !(arg->ui & 1 << i); i++) ;
-			selmon->pertag->curtag = i + 1;
-		}
-	} else {
-		tmptag = selmon->pertag->prevtag;
-		selmon->pertag->prevtag = selmon->pertag->curtag;
-		selmon->pertag->curtag = tmptag;
-	}
+      if (arg->ui == ~0)
+        m->pertag->curtag = 0;
+      else {
+        for (i = 0; !(arg->ui & 1 << i); i++) ;
+        m->pertag->curtag = i + 1;
+      }
+    } else {
+      tmptag = m->pertag->prevtag;
+      m->pertag->prevtag = m->pertag->curtag;
+      m->pertag->curtag = tmptag;
+    }
 
-	selmon->nmaster = selmon->pertag->nmasters[selmon->pertag->curtag];
-	selmon->mfact = selmon->pertag->mfacts[selmon->pertag->curtag];
-	selmon->sellt = selmon->pertag->sellts[selmon->pertag->curtag];
-	selmon->lt[selmon->sellt] = selmon->pertag->ltidxs[selmon->pertag->curtag][selmon->sellt];
-	selmon->lt[selmon->sellt^1] = selmon->pertag->ltidxs[selmon->pertag->curtag][selmon->sellt^1];
+    m->nmaster = m->pertag->nmasters[m->pertag->curtag];
+    m->mfact = m->pertag->mfacts[m->pertag->curtag];
+    m->sellt = m->pertag->sellts[m->pertag->curtag];
+    m->lt[m->sellt] = m->pertag->ltidxs[m->pertag->curtag][m->sellt];
+    m->lt[m->sellt^1] = m->pertag->ltidxs[m->pertag->curtag][m->sellt^1];
+    arrange(m);
+    if (!mons_view_same_tag) {
+      break;
+    }
+  }
 
 	focusclient(focustop(selmon), 1);
-	arrange(selmon);
 	printstatus();
 }
 
