@@ -1207,6 +1207,8 @@ defaultgaps(const Arg *arg)
 	setgaps(gappoh, gappov, gappih, gappiv);
 }
 
+#define SANITIZE_NULL_STR(x) x == NULL ? "(null)" : x
+
 void
 describeclient(const Arg *arg)
 {
@@ -1218,19 +1220,22 @@ describeclient(const Arg *arg)
       const char tagstr[(LENGTH(tags) + 5) / 3] = {0};
       snprintf(tagstr, LENGTH(tagstr), "%u", c->tags);
       Arg spawncmd = {.v = (const char*[]){describeclientcmd,
-        client_get_appid(c),
-        client_get_title(c),
+        SANITIZE_NULL_STR(client_get_appid(c)),
+        SANITIZE_NULL_STR(client_get_title(c)),
         tagstr,
-        c->mon->wlr_output->name,
-        flagtostring[c->isfloating],
-        flagtostring[c->isurgent],
-        flagtostring[c->isfullscreen],
+        SANITIZE_NULL_STR(c->mon->wlr_output->name),
+        flagtostring[c->isfloating ? 1 : 0],
+        flagtostring[c->isurgent ? 1 : 0],
+        flagtostring[c->isfullscreen ? 1 : 0],
+        flagtostring[client_is_x11(c) ? 1 : 0],
         NULL
       }};
       spawn(&spawncmd);
     }
   }
 }
+
+#undef SANITIZE_NULL_STR
 
 void
 destroyidleinhibitor(struct wl_listener *listener, void *data)
