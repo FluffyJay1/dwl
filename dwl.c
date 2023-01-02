@@ -289,7 +289,7 @@ static void foreigndestroynotify(struct wl_listener *listener, void *data);
 static void foreignfullscreennotify(struct wl_listener *listener, void *data);
 static void foreignsetrectanglenotify(struct wl_listener *listener, void *data);
 static void fullscreennotify(struct wl_listener *listener, void *data);
-static void handlecursoractivity(void);
+static void handlecursoractivity(bool restore_focus);
 static void handleconstraintcommit(struct wl_listener *listener, void *data);
 static int hidecursor(void *data);
 static void incnmaster(const Arg *arg);
@@ -631,7 +631,7 @@ axisnotify(struct wl_listener *listener, void *data)
 	IDLE_NOTIFY_ACTIVITY;
 	/* TODO: allow usage of scroll whell for mousebindings, it can be implemented
 	 * checking the event's orientation and the delta of the event */
-	handlecursoractivity();
+	handlecursoractivity(true);
 	/* Notify the client with pointer focus of the axis event. */
 	wlr_seat_pointer_notify_axis(seat,
 			event->time_msec, event->orientation, event->delta,
@@ -648,7 +648,7 @@ buttonpress(struct wl_listener *listener, void *data)
 	const Button *b;
 
 	IDLE_NOTIFY_ACTIVITY;
-	handlecursoractivity();
+	handlecursoractivity(true);
 
 	switch (event->state) {
 	case WLR_BUTTON_PRESSED:
@@ -1217,7 +1217,7 @@ describeclient(const Arg *arg)
 		xytonode(cursor->x, cursor->y, NULL, &c, NULL, NULL, NULL);
     if (c) {
       const char *flagtostring[] = {"false", "true"};
-      const char tagstr[(LENGTH(tags) + 5) / 3] = {0};
+      char tagstr[(LENGTH(tags) + 5) / 3] = {0};
       snprintf(tagstr, LENGTH(tagstr), "%u", c->tags);
       Arg spawncmd = {.v = (const char*[]){describeclientcmd,
         SANITIZE_NULL_STR(client_get_appid(c)),
@@ -1547,12 +1547,14 @@ fullscreennotify(struct wl_listener *listener, void *data)
 }
 
 void
-handlecursoractivity()
+handlecursoractivity(bool restore_focus)
 {
 	wl_event_source_timer_update(hide_source, cursor_timeout * 1000);
 	if (cursor_hidden) {
 		wlr_xcursor_manager_set_cursor_image(cursor_mgr, "left_ptr", cursor);
 		cursor_hidden = false;
+    if (restore_focus)
+      motionnotify(0);
 	}
 }
 
@@ -1984,7 +1986,7 @@ motionnotify(uint32_t time)
 	/* time is 0 in internal calls meant to restore pointer focus. */
 	if (time) {
 		IDLE_NOTIFY_ACTIVITY;
-		handlecursoractivity();
+		handlecursoractivity(false);
 
 		/* Update selmon (even while dragging a window) */
 		if (sloppyfocus)
@@ -2355,7 +2357,7 @@ run(char *startup_cmd)
 	 * monitor when displayed here */
 	wlr_cursor_warp_closest(cursor, NULL, cursor->x, cursor->y);
 	wlr_xcursor_manager_set_cursor_image(cursor_mgr, cursor_image, cursor);
-	handlecursoractivity();
+	handlecursoractivity(false);
 
 	/* Run the Wayland event loop. This does not return until you exit the
 	 * compositor. Starting the backend rigged up all of the necessary event
