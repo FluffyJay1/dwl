@@ -1061,7 +1061,8 @@ createpointerconstraint(struct wl_listener *listener, void *data)
 	pointer_constraint->destroy.notify = destroypointerconstraint;
 	wl_signal_add(&constraint->events.destroy, &pointer_constraint->destroy);
 
-	if (client_surface(focustop(selmon)) == constraint->surface) {
+	Client *c = focustop(selmon);
+	if (c && client_surface(c) == constraint->surface) {
 		if (allow_constrain == 0 || active_constraint == constraint)
 			return;
 
