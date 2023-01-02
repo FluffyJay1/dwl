@@ -117,7 +117,7 @@ typedef struct {
 		struct wlr_xdg_surface *xdg;
 		struct wlr_xwayland_surface *xwayland;
 	} surface;
-  struct wlr_foreign_toplevel_handle_v1 *foreign_toplevel;
+	struct wlr_foreign_toplevel_handle_v1 *foreign_toplevel;
 	struct wl_listener commit;
 	struct wl_listener map;
 	struct wl_listener maximize;
@@ -125,11 +125,11 @@ typedef struct {
 	struct wl_listener destroy;
 	struct wl_listener set_title;
 	struct wl_listener fullscreen;
-  struct wl_listener foreign_activate;
-  struct wl_listener foreign_fullscreen;
-  struct wl_listener foreign_close;
-  struct wl_listener foreign_set_rectangle;
-  struct wl_listener foreign_destroy;
+	struct wl_listener foreign_activate;
+	struct wl_listener foreign_fullscreen;
+	struct wl_listener foreign_close;
+	struct wl_listener foreign_set_rectangle;
+	struct wl_listener foreign_destroy;
 	struct wlr_box prev;  /* layout-relative, includes border */
 #ifdef XWAYLAND
 	struct wl_listener activate;
@@ -194,7 +194,7 @@ struct Monitor {
 	struct wlr_box w;      /* window area, layout-relative */
 	struct wl_list layers[4]; /* LayerSurface::link */
 	const Layout *lt[2];
-  Pertag *pertag;
+	Pertag *pertag;
 	int gappih;           /* horizontal gap between windows */
 	int gappiv;           /* vertical gap between windows */
 	int gappoh;           /* horizontal outer gaps */
@@ -1145,7 +1145,7 @@ createpointer(struct wlr_pointer *pointer)
 
 		if (libinput_device_config_scroll_get_methods(libinput_device) != LIBINPUT_CONFIG_SCROLL_NO_SCROLL)
 			libinput_device_config_scroll_set_method (libinput_device, scroll_method);
-		
+
 		if (libinput_device_config_click_get_methods(libinput_device) != LIBINPUT_CONFIG_CLICK_METHOD_NONE)
 			libinput_device_config_click_set_method (libinput_device, click_method);
 
@@ -1212,27 +1212,27 @@ defaultgaps(const Arg *arg)
 void
 describeclient(const Arg *arg)
 {
-  if (describeclientcmd) {
-    Client *c;
+	if (describeclientcmd) {
+		Client *c;
 		xytonode(cursor->x, cursor->y, NULL, &c, NULL, NULL, NULL);
-    if (c) {
-      const char *flagtostring[] = {"false", "true"};
-      char tagstr[(LENGTH(tags) + 5) / 3] = {0};
-      snprintf(tagstr, LENGTH(tagstr), "%u", c->tags);
-      Arg spawncmd = {.v = (const char*[]){describeclientcmd,
-        SANITIZE_NULL_STR(client_get_appid(c)),
-        SANITIZE_NULL_STR(client_get_title(c)),
-        tagstr,
-        SANITIZE_NULL_STR(c->mon->wlr_output->name),
-        flagtostring[c->isfloating ? 1 : 0],
-        flagtostring[c->isurgent ? 1 : 0],
-        flagtostring[c->isfullscreen ? 1 : 0],
-        flagtostring[client_is_x11(c) ? 1 : 0],
-        NULL
-      }};
-      spawn(&spawncmd);
-    }
-  }
+		if (c) {
+			const char *flagtostring[] = {"false", "true"};
+			char tagstr[(LENGTH(tags) + 5) / 3] = {0};
+			snprintf(tagstr, LENGTH(tagstr), "%u", c->tags);
+			Arg spawncmd = {.v = (const char*[]){describeclientcmd,
+				SANITIZE_NULL_STR(client_get_appid(c)),
+				SANITIZE_NULL_STR(client_get_title(c)),
+				tagstr,
+				SANITIZE_NULL_STR(c->mon->wlr_output->name),
+				flagtostring[c->isfloating ? 1 : 0],
+				flagtostring[c->isurgent ? 1 : 0],
+				flagtostring[c->isfullscreen ? 1 : 0],
+				flagtostring[client_is_x11(c) ? 1 : 0],
+				NULL
+			}};
+			spawn(&spawncmd);
+		}
+	}
 }
 
 #undef SANITIZE_NULL_STR
@@ -1399,14 +1399,14 @@ focusclient(Client *c, int lift)
 		/* Don't deactivate old client if the new one wants focus, as this causes issues with winecfg
 		 * and probably other clients */
 		} else if (w && !client_is_unmanaged(w) && (!c || !client_wants_focus(c))) {
-      float const *color = w->isfloating ? floatcolor : bordercolor;
+			float const *color = w->isfloating ? floatcolor : bordercolor;
 			for (i = 0; i < 4; i++)
 				wlr_scene_rect_set_color(w->border[i], color);
 
 			client_activate_surface(old, 0);
-      if (w->foreign_toplevel) {
-        wlr_foreign_toplevel_handle_v1_set_activated(w->foreign_toplevel, false);
-      }
+			if (w->foreign_toplevel) {
+				wlr_foreign_toplevel_handle_v1_set_activated(w->foreign_toplevel, false);
+			}
 		}
 	}
 	printstatus();
@@ -1425,9 +1425,9 @@ focusclient(Client *c, int lift)
 
 	/* Activate the new client */
 	client_activate_surface(client_surface(c), 1);
-  if (c->foreign_toplevel) {
-    wlr_foreign_toplevel_handle_v1_set_activated(c->foreign_toplevel, true);
-  }
+	if (c->foreign_toplevel) {
+		wlr_foreign_toplevel_handle_v1_set_activated(c->foreign_toplevel, true);
+	}
 }
 
 void
@@ -1439,10 +1439,10 @@ focusmon(const Arg *arg)
 			selmon = dirtomon(selmon, arg->i);
 		while (!selmon->wlr_output->enabled && i++ < nmons);
 	focusclient(focustop(selmon), 1);
-  if (focusmoncmd) {
-    Arg spawncmd = {.v = (const char*[]){focusmoncmd, selmon->wlr_output->name, NULL}};
-    spawn(&spawncmd);
-  }
+	if (focusmoncmd) {
+		Arg spawncmd = {.v = (const char*[]){focusmoncmd, selmon->wlr_output->name, NULL}};
+		spawn(&spawncmd);
+	}
 }
 
 void
@@ -1487,10 +1487,10 @@ focustop(Monitor *m)
 void
 foreignactivatenotify(struct wl_listener *listener, void *data)
 {
-  Client *c = wl_container_of(listener, c, foreign_activate);
-  /*struct wlr_foreign_toplevel_handle_v1_activated_event *event = data;*/
+	Client *c = wl_container_of(listener, c, foreign_activate);
+	/*struct wlr_foreign_toplevel_handle_v1_activated_event *event = data;*/
 
-  /* copied from urgent() */
+	/* copied from urgent() */
 	if (c && c != focustop(selmon)) {
 		c->isurgent = 1;
 		printstatus();
@@ -1501,42 +1501,40 @@ static
 void foreignclosenotify(struct wl_listener *listener, void *data)
 {
 	Client *c = wl_container_of(listener, c, foreign_close);
-  client_send_close(c);
+	client_send_close(c);
 }
 
 static
 void foreigndestroynotify(struct wl_listener *listener, void *data)
 {
-  /* hack to call destroynotify, assuming that fullscreennotify does nothing
-   * with the args */
 	Client *c = wl_container_of(listener, c, foreign_destroy);
-  wl_list_remove(&c->foreign_activate.link);
-  wl_list_remove(&c->foreign_fullscreen.link);
-  wl_list_remove(&c->foreign_close.link);
-  wl_list_remove(&c->foreign_set_rectangle.link);
-  wl_list_remove(&c->foreign_destroy.link);
+	wl_list_remove(&c->foreign_activate.link);
+	wl_list_remove(&c->foreign_fullscreen.link);
+	wl_list_remove(&c->foreign_close.link);
+	wl_list_remove(&c->foreign_set_rectangle.link);
+	wl_list_remove(&c->foreign_destroy.link);
 }
 
 void
 foreignfullscreennotify(struct wl_listener *listener, void *data)
 {
-  /* hack to call fullscreennotify, assuming that fullscreennotify does nothing
-   * with the args */
+	/* hack to call fullscreennotify, assuming that fullscreennotify does nothing
+	 * with the args */
 	Client *c = wl_container_of(listener, c, foreign_fullscreen);
-  fullscreennotify(&c->fullscreen, data);
+	fullscreennotify(&c->fullscreen, data);
 }
 
 void
 foreignsetrectanglenotify(struct wl_listener *listener, void *data)
 {
 	Client *c = wl_container_of(listener, c, foreign_set_rectangle);
-  struct wlr_foreign_toplevel_handle_v1_set_rectangle_event *event = data;
+	struct wlr_foreign_toplevel_handle_v1_set_rectangle_event *event = data;
 	Client *p = NULL;
 	int type = toplevel_from_wlr_surface(event->surface, &c, NULL);
-  /* resize(c, (struct wlr_box) {.x = p->geom.x + event->x, .y = p->geom.y + event->y, */
-  /*     .width = event->width, .height = event->height}, 0, 1); */
-  resize(c, (struct wlr_box) {.x = p->geom.x + event->x, .y = p->geom.y + event->y,
-      .width = event->width, .height = event->height}, 0, 1);
+	/* resize(c, (struct wlr_box) {.x = p->geom.x + event->x, .y = p->geom.y + event->y, */
+	/*     .width = event->width, .height = event->height}, 0, 1); */
+	resize(c, (struct wlr_box) {.x = p->geom.x + event->x, .y = p->geom.y + event->y,
+			.width = event->width, .height = event->height}, 0, 1);
 }
 
 void
@@ -1553,8 +1551,8 @@ handlecursoractivity(bool restore_focus)
 	if (cursor_hidden) {
 		wlr_xcursor_manager_set_cursor_image(cursor_mgr, "left_ptr", cursor);
 		cursor_hidden = false;
-    if (restore_focus)
-      motionnotify(0);
+		if (restore_focus)
+			motionnotify(0);
 	}
 }
 
@@ -1825,15 +1823,15 @@ mapnotify(struct wl_listener *listener, void *data)
 	}
 	c->scene->node.data = c->scene_surface->node.data = c;
 
-  c->foreign_toplevel = wlr_foreign_toplevel_handle_v1_create(foreign_toplevel_manager);
-  LISTEN(&c->foreign_toplevel->events.request_activate, &c->foreign_activate, foreignactivatenotify);
-  LISTEN(&c->foreign_toplevel->events.request_fullscreen, &c->foreign_fullscreen, foreignfullscreennotify);
-  LISTEN(&c->foreign_toplevel->events.request_close, &c->foreign_close, foreignclosenotify);
-  LISTEN(&c->foreign_toplevel->events.set_rectangle, &c->foreign_set_rectangle, foreignsetrectanglenotify);
-  LISTEN(&c->foreign_toplevel->events.destroy, &c->foreign_destroy, foreigndestroynotify);
+	c->foreign_toplevel = wlr_foreign_toplevel_handle_v1_create(foreign_toplevel_manager);
+	LISTEN(&c->foreign_toplevel->events.request_activate, &c->foreign_activate, foreignactivatenotify);
+	LISTEN(&c->foreign_toplevel->events.request_fullscreen, &c->foreign_fullscreen, foreignfullscreennotify);
+	LISTEN(&c->foreign_toplevel->events.request_close, &c->foreign_close, foreignclosenotify);
+	LISTEN(&c->foreign_toplevel->events.set_rectangle, &c->foreign_set_rectangle, foreignsetrectanglenotify);
+	LISTEN(&c->foreign_toplevel->events.destroy, &c->foreign_destroy, foreigndestroynotify);
 
 #ifdef XWAYLAND
-  /* Handle unmanaged clients first so we can return prior create borders */
+	/* Handle unmanaged clients first so we can return prior create borders */
 	if (client_is_unmanaged(c)) {
 		client_get_geometry(c, &c->geom);
 		/* Unmanaged clients always are floating */
@@ -1867,7 +1865,7 @@ mapnotify(struct wl_listener *listener, void *data)
 	 * we always consider floating, clients that have parent and thus
 	 * we set the same tags and monitor than its parent, if not
 	 * try to apply rules for them */
-	 /* TODO: https://github.com/djpohly/dwl/pull/334#issuecomment-1330166324 */
+	/* TODO: https://github.com/djpohly/dwl/pull/334#issuecomment-1330166324 */
 	if (c->type == XDGShell && (p = client_get_parent(c))) {
 		c->isfloating = 1;
 		wlr_scene_node_reparent(&c->scene->node, layers[LyrFloat]);
@@ -1900,14 +1898,14 @@ maximizenotify(struct wl_listener *listener, void *data)
 int
 moncompare(const void *a, const void *b)
 {
-  Monitor *m1 = *(Monitor **) a, *m2 = *(Monitor **) b;
-  if (m1->m.x > m2->m.x) {
-    return 1;
-  } else if (m1->m.x < m2->m.x) {
-    return -1;
-  } else {
-    return 0;
-  }
+	Monitor *m1 = *(Monitor **) a, *m2 = *(Monitor **) b;
+	if (m1->m.x > m2->m.x) {
+		return 1;
+	} else if (m1->m.x < m2->m.x) {
+		return -1;
+	} else {
+		return 0;
+	}
 }
 
 void
@@ -2048,7 +2046,7 @@ motionrelative(struct wl_listener *listener, void *data)
 		event->delta_x, event->delta_y, event->unaccel_dx, event->unaccel_dy);
 
 	if (!active_constraint) {
-    wlr_cursor_move(cursor, &event->pointer->base, event->delta_x, event->delta_y);
+		wlr_cursor_move(cursor, &event->pointer->base, event->delta_x, event->delta_y);
 	}
 	motionnotify(event->time_msec);
 }
@@ -2189,11 +2187,11 @@ printstatus(void)
 	Client *c;
 	unsigned int occ, urg, sel;
 
-  for (int i = 0; i < mons_sorted_length; i++) {
-    Monitor *m = mons_sorted[i];
+	for (int i = 0; i < mons_sorted_length; i++) {
+		Monitor *m = mons_sorted[i];
 		if (!m->wlr_output->enabled) {
 			continue;
-    }
+		}
 		occ = urg = 0;
 		wl_list_for_each(c, &clients, link) {
 			if (c->mon != m)
@@ -2222,7 +2220,7 @@ printstatus(void)
 				sel, urg);
 		printf("%s layout %s\n", m->wlr_output->name, m->lt[m->sellt]->symbol);
 	}
-  printf("cycle\n");
+	printf("cycle\n");
 	fflush(stdout);
 }
 
@@ -2278,7 +2276,7 @@ resize(Client *c, struct wlr_box geo, int interact, int draw_borders)
 	struct wlr_box *bbox = interact ? &sgeom : &c->mon->w;
 	client_set_bounds(c, geo.width, geo.height);
 	c->geom = geo;
-  c->bw = draw_borders ? borderpx : 0;
+	c->bw = draw_borders ? borderpx : 0;
 	applybounds(c, bbox);
 
 	/* Update scene-graph, including borders */
@@ -2334,21 +2332,21 @@ run(char *startup_cmd)
 
 	/* At this point the outputs are initialized, choose initial selmon based on
 	 * a configured priority list, and set default cursor image */
-  Monitor *m;
+	Monitor *m;
 	for (const char** r = main_mon_priority; r < END(main_mon_priority); r++) {
-    wl_list_for_each(m, &mons, link) {
-      if (strstr(m->wlr_output->name, *r)) {
-        selmon = m;
-        break;
-      }
-    }
-    if (selmon) {
-      break;
-    }
-  }
-  if (!selmon) {
-    selmon = xytomon(cursor->x, cursor->y);
-  }
+		wl_list_for_each(m, &mons, link) {
+			if (strstr(m->wlr_output->name, *r)) {
+				selmon = m;
+				break;
+			}
+		}
+		if (selmon) {
+			break;
+		}
+	}
+	if (!selmon) {
+		selmon = xytomon(cursor->x, cursor->y);
+	}
 	printstatus();
 
 	/* TODO hack to get cursor to display in its initial location (100, 100)
@@ -2394,12 +2392,12 @@ setfloating(Client *c, int floating)
 	wlr_scene_node_reparent(&c->scene->node, layers[c->isfloating ? LyrFloat : LyrTile]);
 	if (c->isfloating && !c->bw)
 		resize(c, c->geom, 0, 1);
-  if (!grabc)
-    if (floating)
-      for (int i = 0; i < 4; i++) {
-        wlr_scene_rect_set_color(c->border[i], floatcolor);
-        wlr_scene_node_lower_to_bottom(&c->border[i]->node);
-      }
+	if (!grabc)
+		if (floating)
+			for (int i = 0; i < 4; i++) {
+				wlr_scene_rect_set_color(c->border[i], floatcolor);
+				wlr_scene_node_lower_to_bottom(&c->border[i]->node);
+			}
 	arrange(c->mon);
 	printstatus();
 }
@@ -2423,9 +2421,9 @@ setfullscreen(Client *c, int fullscreen)
 		 * client positions are set by the user and cannot be recalculated */
 		resize(c, c->prev, 0, 1);
 	}
-  if (c->foreign_toplevel) {
-    wlr_foreign_toplevel_handle_v1_set_fullscreen(c->foreign_toplevel, fullscreen);
-  }
+	if (c->foreign_toplevel) {
+		wlr_foreign_toplevel_handle_v1_set_fullscreen(c->foreign_toplevel, fullscreen);
+	}
 	arrange(c->mon);
 	printstatus();
 }
@@ -2446,7 +2444,7 @@ setlayout(const Arg *arg)
 	if (!selmon)
 		return;
 	if (!arg || !arg->v || arg->v != selmon->lt[selmon->sellt])
-    selmon->sellt = selmon->pertag->sellts[selmon->pertag->curtag] ^= 1;
+		selmon->sellt = selmon->pertag->sellts[selmon->pertag->curtag] ^= 1;
 	if (arg && arg->v)
 		selmon->lt[selmon->sellt] = selmon->pertag->ltidxs[selmon->pertag->curtag][selmon->sellt] = (Layout *)arg->v;
 	if (!selmon->lt[selmon->sellt]->arrange) {
@@ -2488,18 +2486,18 @@ setmon(Client *c, Monitor *m, unsigned int newtags)
 	/* TODO leave/enter is not optimal but works */
 	if (oldmon) {
 		wlr_surface_send_leave(client_surface(c), oldmon->wlr_output);
-    if (c->foreign_toplevel) {
-      wlr_foreign_toplevel_handle_v1_output_leave(c->foreign_toplevel, oldmon->wlr_output);
-    }
+		if (c->foreign_toplevel) {
+			wlr_foreign_toplevel_handle_v1_output_leave(c->foreign_toplevel, oldmon->wlr_output);
+		}
 		arrange(oldmon);
 	}
 	if (m) {
 		/* Make sure window actually overlaps with the monitor */
 		resize(c, c->geom, 0, 1);
 		wlr_surface_send_enter(client_surface(c), m->wlr_output);
-    if (c->foreign_toplevel) {
-      wlr_foreign_toplevel_handle_v1_output_enter(c->foreign_toplevel, m->wlr_output);
-    }
+		if (c->foreign_toplevel) {
+			wlr_foreign_toplevel_handle_v1_output_enter(c->foreign_toplevel, m->wlr_output);
+		}
 		c->tags = newtags ? newtags : m->tagset[m->seltags]; /* assign tags of target monitor */
 		setfullscreen(c, c->isfullscreen); /* This will call arrange(c->mon) */
 	}
@@ -2683,10 +2681,10 @@ setup(void)
 	hide_source = wl_event_loop_add_timer(wl_display_get_event_loop(dpy),
 			hidecursor, cursor);
 
-  foreign_toplevel_manager = wlr_foreign_toplevel_manager_v1_create(dpy);
-  struct wlr_xdg_foreign_registry *foreign_registry = wlr_xdg_foreign_registry_create(dpy);
-  wlr_xdg_foreign_v1_create(dpy, foreign_registry);
-  wlr_xdg_foreign_v2_create(dpy, foreign_registry);
+	foreign_toplevel_manager = wlr_foreign_toplevel_manager_v1_create(dpy);
+	struct wlr_xdg_foreign_registry *foreign_registry = wlr_xdg_foreign_registry_create(dpy);
+	wlr_xdg_foreign_v1_create(dpy, foreign_registry);
+	wlr_xdg_foreign_v2_create(dpy, foreign_registry);
 
 	/*
 	 * Configures a seat, which is a single "seat" at which a user sits and
@@ -2777,7 +2775,7 @@ void
 tile(Monitor *m)
 {
 	unsigned int i, n = 0, h, r, oe = enablegaps, ie = enablegaps, mw, my, ty, draw_borders = 1;
-  unsigned int sbg = 0; // flag for smart bar gap
+	unsigned int sbg = 0; // flag for smart bar gap
 	Client *c;
 
 	wl_list_for_each(c, &clients, link)
@@ -2785,12 +2783,12 @@ tile(Monitor *m)
 			n++;
 	if (n == 0)
 		return;
-	
+
 	if (smartgaps == n) {
 		oe = 0; // outer gaps disabled
-    if (smartbargaps) {
-      sbg = 1;
-    }
+		if (smartbargaps) {
+			sbg = 1;
+		}
 	}
 
 	if (n == smartborders)
@@ -2866,55 +2864,55 @@ void
 toggleview(const Arg *arg)
 {
 	unsigned int newtagset;
-  if (mons_view_same_tag) {
-    newtagset = global_tagset[global_seltags] ^ (arg->ui & TAGMASK);
-  } else {
-    newtagset = selmon ? selmon->tagset[selmon->seltags] ^ (arg->ui & TAGMASK) : 0;
-  }
+	if (mons_view_same_tag) {
+		newtagset = global_tagset[global_seltags] ^ (arg->ui & TAGMASK);
+	} else {
+		newtagset = selmon ? selmon->tagset[selmon->seltags] ^ (arg->ui & TAGMASK) : 0;
+	}
 	int i;
 
 	if (newtagset) {
-    global_tagset[global_seltags] = newtagset;
+		global_tagset[global_seltags] = newtagset;
 
-    Monitor *m; // "m" replaced "selmon" in the original code
-    wl_list_for_each(m, &mons, link) {
-      if (!mons_view_same_tag) {
-        m = selmon;
-      }
-      m->tagset[m->seltags] = newtagset;
+		Monitor *m; // "m" replaced "selmon" in the original code
+		wl_list_for_each(m, &mons, link) {
+			if (!mons_view_same_tag) {
+				m = selmon;
+			}
+			m->tagset[m->seltags] = newtagset;
 
-      if (newtagset == ~0) {
-        m->pertag->prevtag = m->pertag->curtag;
-        m->pertag->curtag = 0;
-      }
+			if (newtagset == ~0) {
+				m->pertag->prevtag = m->pertag->curtag;
+				m->pertag->curtag = 0;
+			}
 
-      /* test if the user did not select the same tag */
-      if (!(newtagset & 1 << (m->pertag->curtag - 1))) {
-        m->pertag->prevtag = m->pertag->curtag;
-        for (i = 0; !(newtagset & 1 << i); i++) ;
-        m->pertag->curtag = i + 1;
-      }
+			/* test if the user did not select the same tag */
+			if (!(newtagset & 1 << (m->pertag->curtag - 1))) {
+				m->pertag->prevtag = m->pertag->curtag;
+				for (i = 0; !(newtagset & 1 << i); i++) ;
+				m->pertag->curtag = i + 1;
+			}
 
-      /* apply settings for this view */
-      m->nmaster = m->pertag->nmasters[m->pertag->curtag];
-      m->mfact = m->pertag->mfacts[m->pertag->curtag];
-      m->sellt = m->pertag->sellts[m->pertag->curtag];
-      m->lt[m->sellt] = m->pertag->ltidxs[m->pertag->curtag][m->sellt];
-      m->lt[m->sellt^1] = m->pertag->ltidxs[m->pertag->curtag][m->sellt^1];
-      arrange(m);
-      if (!mons_view_same_tag) {
-        break;
-      }
-    }
-    focusclient(focustop(selmon), 1);
-  }
-  printstatus();
+			/* apply settings for this view */
+			m->nmaster = m->pertag->nmasters[m->pertag->curtag];
+			m->mfact = m->pertag->mfacts[m->pertag->curtag];
+			m->sellt = m->pertag->sellts[m->pertag->curtag];
+			m->lt[m->sellt] = m->pertag->ltidxs[m->pertag->curtag][m->sellt];
+			m->lt[m->sellt^1] = m->pertag->ltidxs[m->pertag->curtag][m->sellt^1];
+			arrange(m);
+			if (!mons_view_same_tag) {
+				break;
+			}
+		}
+		focusclient(focustop(selmon), 1);
+	}
+	printstatus();
 }
 
-  void
+void
 unlocksession(struct wl_listener *listener, void *data)
 {
-  SessionLock *lock = wl_container_of(listener, lock, unlock);
+	SessionLock *lock = wl_container_of(listener, lock, unlock);
 	destroylock(lock, 1);
 }
 
@@ -2946,10 +2944,10 @@ unmapnotify(struct wl_listener *listener, void *data)
 		grabc = NULL;
 	}
 
-  if (c->foreign_toplevel) {
-    wlr_foreign_toplevel_handle_v1_destroy(c->foreign_toplevel);
-    c->foreign_toplevel = NULL;
-  }
+	if (c->foreign_toplevel) {
+		wlr_foreign_toplevel_handle_v1_destroy(c->foreign_toplevel);
+		c->foreign_toplevel = NULL;
+	}
 
 	if (client_is_unmanaged(c)) {
 		if (c == exclusive_focus)
@@ -3051,16 +3049,16 @@ updatemons(struct wl_listener *listener, void *data)
 
 	wlr_output_manager_v1_set_configuration(output_mgr, config);
 
-  // sort mons from left to right and store result
-  int i = 0;
-  mons_sorted_length = wl_list_length(&mons);
-  mons_sorted = erealloc(mons_sorted, sizeof(Monitor*) * mons_sorted_length);
-  wl_list_for_each(m, &mons, link) {
-    mons_sorted[i++] = m;
-  }
-  qsort(mons_sorted, mons_sorted_length, sizeof(Monitor*), moncompare);
+	// sort mons from left to right and store result
+	int i = 0;
+	mons_sorted_length = wl_list_length(&mons);
+	mons_sorted = erealloc(mons_sorted, sizeof(Monitor*) * mons_sorted_length);
+	wl_list_for_each(m, &mons, link) {
+		mons_sorted[i++] = m;
+	}
+	qsort(mons_sorted, mons_sorted_length, sizeof(Monitor*), moncompare);
 
-  printstatus(); // the order of monitors has changed
+	printstatus(); // the order of monitors has changed
 }
 
 void
@@ -3089,51 +3087,51 @@ view(const Arg *arg)
 	int i;
 	unsigned int tmptag;
 
-  if (mons_view_same_tag) {
-    if (arg->ui & TAGMASK == global_tagset[global_seltags]) {
-      return;
-    }
-  } else {
-    if (!selmon || (arg->ui & TAGMASK) == selmon->tagset[selmon->seltags]) {
-      return;
-    }
-  }
-  global_seltags ^= 1;
-  if (arg->ui & TAGMASK) {
-    global_tagset[global_seltags] = arg->ui & TAGMASK;
-  }
-  Monitor *m; // "m" replaced "selmon" in the original code
-  wl_list_for_each(m, &mons, link) {
-    if (!mons_view_same_tag) {
-      m = selmon;
-    }
-    m->seltags ^= 1; /* toggle sel tagset */
-    if (arg->ui & TAGMASK) {
-      m->tagset[m->seltags] = arg->ui & TAGMASK;
-      m->pertag->prevtag = m->pertag->curtag;
+	if (mons_view_same_tag) {
+		if ((arg->ui & TAGMASK) == global_tagset[global_seltags]) {
+			return;
+		}
+	} else {
+		if (!selmon || (arg->ui & TAGMASK) == selmon->tagset[selmon->seltags]) {
+			return;
+		}
+	}
+	global_seltags ^= 1;
+	if (arg->ui & TAGMASK) {
+		global_tagset[global_seltags] = arg->ui & TAGMASK;
+	}
+	Monitor *m; // "m" replaced "selmon" in the original code
+	wl_list_for_each(m, &mons, link) {
+		if (!mons_view_same_tag) {
+			m = selmon;
+		}
+		m->seltags ^= 1; /* toggle sel tagset */
+		if (arg->ui & TAGMASK) {
+			m->tagset[m->seltags] = arg->ui & TAGMASK;
+			m->pertag->prevtag = m->pertag->curtag;
 
-      if (arg->ui == ~0)
-        m->pertag->curtag = 0;
-      else {
-        for (i = 0; !(arg->ui & 1 << i); i++) ;
-        m->pertag->curtag = i + 1;
-      }
-    } else {
-      tmptag = m->pertag->prevtag;
-      m->pertag->prevtag = m->pertag->curtag;
-      m->pertag->curtag = tmptag;
-    }
+			if (arg->ui == ~0)
+				m->pertag->curtag = 0;
+			else {
+				for (i = 0; !(arg->ui & 1 << i); i++) ;
+				m->pertag->curtag = i + 1;
+			}
+		} else {
+			tmptag = m->pertag->prevtag;
+			m->pertag->prevtag = m->pertag->curtag;
+			m->pertag->curtag = tmptag;
+		}
 
-    m->nmaster = m->pertag->nmasters[m->pertag->curtag];
-    m->mfact = m->pertag->mfacts[m->pertag->curtag];
-    m->sellt = m->pertag->sellts[m->pertag->curtag];
-    m->lt[m->sellt] = m->pertag->ltidxs[m->pertag->curtag][m->sellt];
-    m->lt[m->sellt^1] = m->pertag->ltidxs[m->pertag->curtag][m->sellt^1];
-    arrange(m);
-    if (!mons_view_same_tag) {
-      break;
-    }
-  }
+		m->nmaster = m->pertag->nmasters[m->pertag->curtag];
+		m->mfact = m->pertag->mfacts[m->pertag->curtag];
+		m->sellt = m->pertag->sellts[m->pertag->curtag];
+		m->lt[m->sellt] = m->pertag->ltidxs[m->pertag->curtag][m->sellt];
+		m->lt[m->sellt^1] = m->pertag->ltidxs[m->pertag->curtag][m->sellt^1];
+		arrange(m);
+		if (!mons_view_same_tag) {
+			break;
+		}
+	}
 
 	focusclient(focustop(selmon), 1);
 	printstatus();
@@ -3228,10 +3226,10 @@ activatex11(struct wl_listener *listener, void *data)
 	/* Only "managed" windows can be activated */
 	if (c->type == X11Managed) {
 		wlr_xwayland_surface_activate(c->surface.xwayland, 1);
-    if (c->foreign_toplevel) {
-      wlr_foreign_toplevel_handle_v1_set_activated(c->foreign_toplevel, true);
-    }
-  }
+		if (c->foreign_toplevel) {
+			wlr_foreign_toplevel_handle_v1_set_activated(c->foreign_toplevel, true);
+		}
+	}
 }
 
 void
@@ -3371,5 +3369,5 @@ main(int argc, char *argv[])
 	return EXIT_SUCCESS;
 
 usage:
-  die("Usage: %s [-v] [-s startup command]", argv[0]);
+	die("Usage: %s [-v] [-s startup command]", argv[0]);
 }

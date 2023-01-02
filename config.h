@@ -65,8 +65,8 @@ static const MonitorRule monrules[] = {
  * will now launch in that monitor
  */
 static const char* main_mon_priority[] = {
-  "HDMI-A-1",
-  "eDP-1",
+	"HDMI-A-1",
+	"eDP-1",
 };
 
 /* keyboard */
@@ -98,9 +98,9 @@ LIBINPUT_CONFIG_SCROLL_ON_BUTTON_DOWN
 static const enum libinput_config_scroll_method scroll_method = LIBINPUT_CONFIG_SCROLL_2FG;
 
 /* You can choose between:
-LIBINPUT_CONFIG_CLICK_METHOD_NONE       
-LIBINPUT_CONFIG_CLICK_METHOD_BUTTON_AREAS       
-LIBINPUT_CONFIG_CLICK_METHOD_CLICKFINGER 
+LIBINPUT_CONFIG_CLICK_METHOD_NONE
+LIBINPUT_CONFIG_CLICK_METHOD_BUTTON_AREAS
+LIBINPUT_CONFIG_CLICK_METHOD_CLICKFINGER
 */
 static const enum libinput_config_click_method click_method = LIBINPUT_CONFIG_CLICK_METHOD_BUTTON_AREAS;
 
@@ -150,14 +150,14 @@ static const Key keys[] = {
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_Return,     spawn,          {.v = termcmd} },
 	{ MODKEY,                    XKB_KEY_j,          focusstack,     {.i = +1} },
 	{ MODKEY,                    XKB_KEY_k,          focusstack,     {.i = -1} },
-  { MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_J,          movestack,      {.i = +1} },
-  { MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_K,          movestack,      {.i = -1} },
+	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_J,          movestack,      {.i = +1} },
+	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_K,          movestack,      {.i = -1} },
 	{ MODKEY,                    XKB_KEY_i,          incnmaster,     {.i = +1} },
 	{ MODKEY,                    XKB_KEY_d,          incnmaster,     {.i = -1} },
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_H,          setmfact,       {.f = -0.05} },
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_L,          setmfact,       {.f = +0.05} },
 	{ MODKEY,                    XKB_KEY_Return,     zoom,           {0} },
-  { MODKEY,                    XKB_KEY_Tab,        view,           {0} },
+	{ MODKEY,                    XKB_KEY_Tab,        view,           {0} },
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_C,          killclient,     {0} },
 	{ MODKEY,                    XKB_KEY_t,          setlayout,      {.v = &layouts[0]} },
 	{ MODKEY,                    XKB_KEY_f,          setlayout,      {.v = &layouts[1]} },
@@ -188,30 +188,30 @@ static const Key keys[] = {
 	CHVT(1), CHVT(2), CHVT(3), CHVT(4), CHVT(5), CHVT(6),
 	CHVT(7), CHVT(8), CHVT(9), CHVT(10), CHVT(11), CHVT(12),
 
-  // custom keys
-  // volume control w/ laptop keys, requires alsa
-  {0, XKB_KEY_XF86AudioRaiseVolume, spawn, SHCMD("amixer -qR set Master 5%+")},
-  {0, XKB_KEY_XF86AudioLowerVolume, spawn, SHCMD("amixer -qR set Master 5%-")},
-  {WLR_MODIFIER_SHIFT, XKB_KEY_XF86AudioRaiseVolume, spawn, SHCMD("amixer -qR set Master 20%+")},
-  {WLR_MODIFIER_SHIFT, XKB_KEY_XF86AudioLowerVolume, spawn, SHCMD("amixer -qR set Master 20%-")},
-  {0, XKB_KEY_XF86AudioMute, spawn, SHCMD("amixer -qR set Master toggle")},
+	// custom keys
+	// volume control w/ laptop keys, requires alsa
+	{0, XKB_KEY_XF86AudioRaiseVolume, spawn, SHCMD("amixer -qR set Master 5%+")},
+	{0, XKB_KEY_XF86AudioLowerVolume, spawn, SHCMD("amixer -qR set Master 5%-")},
+	{WLR_MODIFIER_SHIFT, XKB_KEY_XF86AudioRaiseVolume, spawn, SHCMD("amixer -qR set Master 20%+")},
+	{WLR_MODIFIER_SHIFT, XKB_KEY_XF86AudioLowerVolume, spawn, SHCMD("amixer -qR set Master 20%-")},
+	{0, XKB_KEY_XF86AudioMute, spawn, SHCMD("amixer -qR set Master toggle")},
 
-  // brightness control with laptop keys, requires acpilight and a changebrightness.sh script
-  {0, XKB_KEY_XF86MonBrightnessUp, spawn, SHCMD("changebrightness.sh inc")},
-  {0, XKB_KEY_XF86MonBrightnessDown, spawn, SHCMD("changebrightness.sh dec")},
-  
-  // screenshotting w/ prtscr button, requires prtscr, screenshot, snip scripts
-  {0, XKB_KEY_Print, spawn, SHCMD("prtscr")},
-  {WLR_MODIFIER_CTRL, XKB_KEY_Print, spawn, SHCMD("screenshot")},
-  {WLR_MODIFIER_CTRL|WLR_MODIFIER_SHIFT, XKB_KEY_Print, spawn, SHCMD("snip")},
+	// brightness control with laptop keys, requires acpilight and a changebrightness.sh script
+	{0, XKB_KEY_XF86MonBrightnessUp, spawn, SHCMD("changebrightness.sh inc")},
+	{0, XKB_KEY_XF86MonBrightnessDown, spawn, SHCMD("changebrightness.sh dec")},
 
-  // sleep button = lock lol
-  {0, XKB_KEY_XF86Sleep, spawn, SHCMD("lock")},
+	// screenshotting w/ prtscr button, requires prtscr, screenshot, snip scripts
+	{0, XKB_KEY_Print, spawn, SHCMD("prtscr")},
+	{WLR_MODIFIER_CTRL, XKB_KEY_Print, spawn, SHCMD("screenshot")},
+	{WLR_MODIFIER_CTRL|WLR_MODIFIER_SHIFT, XKB_KEY_Print, spawn, SHCMD("snip")},
+
+	// sleep button = lock lol
+	{0, XKB_KEY_XF86Sleep, spawn, SHCMD("lock")},
 };
 
 static const Button buttons[] = {
 	{ MODKEY, BTN_LEFT,   moveresize,     {.ui = CurMove} },
 	{ MODKEY, BTN_MIDDLE, togglefloating, {0} },
 	{ MODKEY, BTN_RIGHT,  moveresize,     {.ui = CurResize} },
-  { MODKEY|WLR_MODIFIER_SHIFT, BTN_LEFT, describeclient, {0} },
+	{ MODKEY|WLR_MODIFIER_SHIFT, BTN_LEFT, describeclient, {0} },
 };
