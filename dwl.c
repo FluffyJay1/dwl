@@ -71,7 +71,7 @@
 #define MAX(A, B)               ((A) > (B) ? (A) : (B))
 #define MIN(A, B)               ((A) < (B) ? (A) : (B))
 #define CLEANMASK(mask)         (mask & ~WLR_MODIFIER_CAPS)
-#define VISIBLEON(C, M)         ((M) && (C)->mon == (M) && ((C)->tags & (M)->tagset[(M)->seltags]))
+#define VISIBLEON(C, M)         ((M) && (C)->mon == (M) && ((C)->tags & (M)->tagset[(M)->seltags]) && !(C)->swallowedby)
 #define LENGTH(X)               (sizeof X / sizeof X[0])
 #define END(A)                  ((A) + LENGTH(A))
 #define TAGMASK                 ((1 << LENGTH(tags)) - 1)
@@ -103,7 +103,8 @@ typedef struct {
 
 typedef struct Pertag Pertag;
 typedef struct Monitor Monitor;
-typedef struct {
+typedef struct Client Client;
+struct Client {
 	/* Must keep these three elements in this order */
 	unsigned int type; /* XDGShell or X11* */
 	struct wlr_box geom;  /* layout-relative, includes border */
@@ -140,7 +141,10 @@ typedef struct {
 	unsigned int tags;
 	int isfloating, isurgent, isfullscreen;
 	uint32_t resize; /* configure serial of a pending resize */
-} Client;
+	int isterminal;
+	pid_t pid;
+	Client *swallowing, *swallowedby; // the terminal gets swallowed by the child
+};
 
 typedef struct {
 	uint32_t mod;
@@ -230,6 +234,18 @@ typedef struct {
 	int isfloating;
 	int monitor;
 } Rule;
+
+typedef struct {
+	const char *id;
+	const char *title;
+	int autoswallow;
+} SwallowRule;
+
+typedef struct {
+	const char *id;
+	const char *title;
+	int isterminal;
+} TerminalRule;
 
 typedef struct {
 	struct wlr_scene_tree *scene;
@@ -360,6 +376,13 @@ static Monitor *xytomon(double x, double y);
 static struct wlr_scene_node *xytonode(double x, double y, struct wlr_surface **psurface,
 		Client **pc, LayerSurface **pl, double *nx, double *ny);
 static void zoom(const Arg *arg);
+// Swallow
+static pid_t getparentprocess(pid_t p);
+static int isdescprocess(pid_t p, pid_t c);
+static Client *termforwin(Client *w);
+static void substitute(Client *c, Client *w);
+static int applyswallowrules(Client *c);
+static void swallowspit(const Arg *arg);
 
 /* variables */
 static const char broken[] = "broken";
@@ -1107,6 +1130,9 @@ createnotify(struct wl_listener *listener, void *data)
 	c = xdg_surface->data = ecalloc(1, sizeof(*c));
 	c->surface.xdg = xdg_surface;
 	c->bw = borderpx;
+
+	// swallow
+	wl_client_get_credentials(c->surface.xdg->client->client, &c->pid, NULL, NULL);
 
 	LISTEN(&xdg_surface->events.map, &c->map, mapnotify);
 	LISTEN(&xdg_surface->events.unmap, &c->unmap, unmapnotify);
@@ -1872,7 +1898,8 @@ mapnotify(struct wl_listener *listener, void *data)
 		wlr_scene_node_reparent(&c->scene->node, layers[LyrFloat]);
 		setmon(c, p->mon, p->tags);
 	} else {
-		applyrules(c);
+		if (!applyswallowrules(c))
+			applyrules(c);
 	}
 	printstatus();
 
@@ -2945,6 +2972,17 @@ unmapnotify(struct wl_listener *listener, void *data)
 		grabc = NULL;
 	}
 
+	if (c->swallowing) {
+		substitute(c->swallowing, c);
+		c->swallowing->swallowedby = NULL;
+		c->swallowing = NULL;
+	}
+
+	if (c->swallowedby) {
+		c->swallowedby->swallowing = NULL;
+		c->swallowedby = NULL;
+	}
+
 	if (c->foreign_toplevel) {
 		wlr_foreign_toplevel_handle_v1_destroy(c->foreign_toplevel);
 		c->foreign_toplevel = NULL;
@@ -3218,6 +3256,149 @@ zoom(const Arg *arg)
 	arrange(selmon);
 }
 
+// Swallow functions
+pid_t
+getparentprocess(pid_t p)
+{
+	unsigned int v = 0;
+
+	FILE *f;
+	char buf[256];
+	snprintf(buf, sizeof(buf) - 1, "/proc/%u/stat", (unsigned)p);
+
+	if (!(f = fopen(buf, "r")))
+		return 0;
+
+	fscanf(f, "%*u %*s %*c %u", &v);
+	fclose(f);
+
+	return (pid_t)v;
+}
+
+int
+isdescprocess(pid_t p, pid_t c)
+{
+	while (p != c && c != 0)
+		c = getparentprocess(c);
+
+	return (int)c;
+}
+
+Client *
+termforwin(Client *w)
+{
+	Client *c;
+
+	if (!w->pid || w->isterminal)
+		return NULL;
+
+	wl_list_for_each(c, &clients, link)
+		if (c->isterminal && !c->swallowedby && c->pid && isdescprocess(c->pid, w->pid))
+			return c;
+
+	return NULL;
+}
+
+void
+substitute(Client *c, Client *w)
+{
+	c->bw = w->bw;
+	c->isurgent = w->isurgent;
+	c->isfloating = w->isfloating;
+	c->mon = w->mon;
+	c->tags = w->tags;
+	c->prev = w->prev;
+	resize(c, w->geom, 0, w->bw);
+	wl_list_remove(&c->link);
+	wl_list_remove(&c->flink);
+	int focused = w == focustop(w->mon);
+	wl_list_insert(&w->link, &c->link);
+	wl_list_insert(&w->flink, &c->flink);
+	if (focused) {
+		focusclient(c, 1);
+	}
+	if (w->isfullscreen) {
+		setfullscreen(w, 0);
+		c->geom = w->prev; // trick setfullscreen into remembering previous size of swallowed window
+		setfullscreen(c, 1);
+	} else {
+		wlr_scene_node_reparent(&c->scene->node, layers[c->isfloating ? LyrFloat : LyrTile]);
+	}
+	wlr_scene_node_set_enabled(&w->scene->node, 0);
+	wlr_scene_node_set_enabled(&c->scene->node, 1);
+}
+
+// returns 1 if a swallow happened
+int
+applyswallowrules(Client *c) {
+	/* rule matching */
+	const char *appid, *title;
+
+	if (!(appid = client_get_appid(c)))
+		appid = broken;
+	if (!(title = client_get_title(c)))
+		title = broken;
+
+	c->isterminal = 0;
+	for (const TerminalRule *tr = termrules; tr < END(termrules); tr++) {
+		if ((!tr->title || strstr(title, tr->title))
+				&& (!tr->id || strstr(appid, tr->id))) {
+			c->isterminal = tr->isterminal;
+		}
+	}
+
+	int autoswallow = 0;
+	for (const SwallowRule *sr = swallowrules; sr < END(swallowrules); sr++) {
+		if ((!sr->title || strstr(title, sr->title))
+				&& (!sr->id || strstr(appid, sr->id))) {
+			autoswallow = sr->autoswallow;
+		}
+	}
+	if (autoswallow && !c->isterminal) {
+		Client *p = termforwin(c);
+		if (p) {
+			substitute(c, p);
+			c->swallowing = p;
+			p->swallowedby = c;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+// i = 0 to toggle, 1 to force swallow, -1 to force spit
+void
+swallowspit(const Arg *arg) {
+	Client *c = focustop(selmon);
+	if (!c)
+		return;
+	if (c->swallowing && arg->i != 1) {
+		// spit it out (unhide terminal)
+		wl_list_remove(&c->swallowing->link);
+		wl_list_remove(&c->swallowing->flink);
+		wl_list_insert(&c->link, &c->swallowing->link);
+		wl_list_insert(&c->flink, &c->swallowing->flink);
+		c->swallowing->isfloating = c->isfloating;
+		setmon(c->swallowing, c->mon, c->tags);
+		wlr_scene_node_set_enabled(&c->swallowing->scene->node, 1);
+		c->swallowing->swallowedby = NULL;
+		c->swallowing = NULL;
+		arrange(c->mon);
+	} else if (!c->swallowing && arg->i != -1) {
+		// swallow (hide terminal)
+		Client *p = termforwin(c);
+		if (p) {
+			c->swallowing = p;
+			p->swallowedby = c;
+			if (p->isfullscreen) {
+				setfullscreen(p, 0);
+			}
+			wlr_scene_node_set_enabled(&p->scene->node, 0);
+			arrange(c->mon);
+		}
+	}
+}
+
 #ifdef XWAYLAND
 void
 activatex11(struct wl_listener *listener, void *data)
@@ -3258,6 +3439,9 @@ createnotifyx11(struct wl_listener *listener, void *data)
 	c->surface.xwayland = xsurface;
 	c->type = xsurface->override_redirect ? X11Unmanaged : X11Managed;
 	c->bw = borderpx;
+
+	// swallow
+	c->pid = xsurface->pid;
 
 	/* Listen to the various events it can emit */
 	LISTEN(&xsurface->events.map, &c->map, mapnotify);

@@ -69,6 +69,16 @@ static const char* main_mon_priority[] = {
 	"eDP-1",
 };
 
+static const SwallowRule swallowrules[] = {
+	/* app_id, title, autoswallow */
+	{ NULL, NULL, 1 },
+};
+
+static const TerminalRule termrules[] = {
+	/* app_id, title, isterminal */
+	{ "foot", NULL, 1 },
+};
+
 /* keyboard */
 static const struct xkb_rule_names xkb_rules = {
 	/* can specify fields: rules, model, layout, variant, options */
@@ -136,7 +146,7 @@ static const enum libinput_config_tap_button_map button_map = LIBINPUT_CONFIG_TA
 #define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
 
 /* commands */
-static const char *termcmd[] = { "footclient", NULL };
+static const char *termcmd[] = { "foot", NULL }; // if we use footclient, swallowing doesn't work properly
 static const char *menucmd[] = { "fuzzel",	NULL};
 /* command that gets run when you focus a new monitor via keyboard, output name gets passed as the first argument */
 static const char *focusmoncmd = "focusmon.sh";
@@ -181,6 +191,7 @@ static const Key keys[] = {
 	TAGKEYS(          XKB_KEY_8, XKB_KEY_asterisk,                   7),
 	TAGKEYS(          XKB_KEY_9, XKB_KEY_parenleft,                  8),
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_Q,          quit,           {0} },
+	{ MODKEY,                    XKB_KEY_s,          swallowspit,    {.i = 0} },
 
 	/* Ctrl-Alt-Backspace and Ctrl-Alt-Fx used to be handled by X server */
 	{ WLR_MODIFIER_CTRL|WLR_MODIFIER_ALT,XKB_KEY_Terminate_Server, quit, {0} },

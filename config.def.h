@@ -62,6 +62,19 @@ static const char* main_mon_priority[] = {
 	/* "eDP-1", */
 };
 
+/* Rule for which clients to automatically swallow */
+static const SwallowRule swallowrules[] = {
+	/* app_id, title, autoswallow */
+	{ NULL, NULL, 1 },
+};
+
+/* Rule for which clients are considered terminals and thus can be swallowed */
+static const TerminalRule termrules[] = {
+	/* app_id, title, isterminal */
+	/* { "foot", NULL, 1 }, */
+};
+
+
 /* keyboard */
 static const struct xkb_rule_names xkb_rules = {
 	/* can specify fields: rules, model, layout, variant, options */
@@ -190,6 +203,7 @@ static const Key keys[] = {
 	TAGKEYS(          XKB_KEY_8, XKB_KEY_asterisk,                   7),
 	TAGKEYS(          XKB_KEY_9, XKB_KEY_parenleft,                  8),
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_Q,          quit,           {0} },
+	{ MODKEY,                    XKB_KEY_s,          swallowspit,    {.i = 0} },
 
 	/* Ctrl-Alt-Backspace and Ctrl-Alt-Fx used to be handled by X server */
 	{ WLR_MODIFIER_CTRL|WLR_MODIFIER_ALT,XKB_KEY_Terminate_Server, quit, {0} },
