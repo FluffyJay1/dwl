@@ -2430,12 +2430,9 @@ setfloating(Client *c, int floating)
 	wlr_scene_node_reparent(&c->scene->node, layers[c->isfloating ? LyrFloat : LyrTile]);
 	if (c->isfloating && !c->bw)
 		resize(c, c->geom, 0, 1);
-	if (!grabc)
-		if (floating)
-			for (int i = 0; i < 4; i++) {
-				wlr_scene_rect_set_color(c->border[i], floatcolor);
-				wlr_scene_node_lower_to_bottom(&c->border[i]->node);
-			}
+	if (!grabc && floating && c != focustop(selmon))
+		for (int i = 0; i < 4; i++)
+			wlr_scene_rect_set_color(c->border[i], floatcolor);
 	arrange(c->mon);
 	printstatus();
 }
