@@ -148,6 +148,8 @@ static const char *menucmd[] = { "bemenu-run", NULL };
 static const char *focusmoncmd = NULL;
 /* command that accepts args from the describeclient function (configured mod + shift + lmb) */
 static const char *describeclientcmd = NULL;
+/* dmenu-like command that accepts scratchtray names from stdin, lets you choose, and outputs the _index_ of the choice to stdout */
+static const char *scratchtraymenucmd = NULL;
 
 static const Key keys[] = {
 	/* Note that Shift changes certain key codes: c -> C, 2 -> at, etc. */
@@ -204,6 +206,8 @@ static const Key keys[] = {
 	TAGKEYS(          XKB_KEY_9, XKB_KEY_parenleft,                  8),
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_Q,          quit,           {0} },
 	{ MODKEY,                    XKB_KEY_s,          swallowspit,    {.i = 0} },
+	{ MODKEY,                    XKB_KEY_grave,      scratchtraymenu,{0} },
+	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_asciitilde, sendtoscratchtray,{0} },
 
 	/* Ctrl-Alt-Backspace and Ctrl-Alt-Fx used to be handled by X server */
 	{ WLR_MODIFIER_CTRL|WLR_MODIFIER_ALT,XKB_KEY_Terminate_Server, quit, {0} },

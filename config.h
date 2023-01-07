@@ -24,6 +24,8 @@ static const char cursortheme[]     = "Future-cyan"; /* theme from /usr/share/cu
 static const unsigned int cursorsize = 24;
 static const int cursor_timeout = 5;
 static const int mons_view_same_tag = 1; /* Whether changing which tag to view affects all monitors or just the current one */
+static const int scratchmingapv = 64; /* min outer vertical gap for items brought from the scratchtray */
+static const int scratchmingaph = 64; /* min outer horizontal gap for items brought from the scratchtray */
 
 /* pointer constraints */
 static const int allow_constrain      = 1;
@@ -152,12 +154,14 @@ static const char *menucmd[] = { "fuzzel",	NULL};
 static const char *focusmoncmd = "focusmon.sh";
 /* command that accepts args from the describeclient function (configured mod + shift + lmb) */
 static const char *describeclientcmd = "describeclient.sh";
+/* dmenu-like command that accepts scratchtray names from stdin, lets you choose, and outputs the _index_ of the choice to stdout */
+static const char *scratchtraymenucmd = "fuzzel --dmenu --index";
 
 static const Key keys[] = {
 	/* Note that Shift changes certain key codes: c -> C, 2 -> at, etc. */
 	/* modifier                  key                 function        argument */
 	{ MODKEY,                    XKB_KEY_p,          spawn,          {.v = menucmd} },
-	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_Return,     spawn,          {.v = termcmd} },
+	{ MODKEY,                    XKB_KEY_n,          spawn,          {.v = termcmd} },
 	{ MODKEY,                    XKB_KEY_j,          focusstack,     {.i = +1} },
 	{ MODKEY,                    XKB_KEY_k,          focusstack,     {.i = -1} },
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_J,          movestack,      {.i = +1} },
@@ -190,8 +194,10 @@ static const Key keys[] = {
 	TAGKEYS(          XKB_KEY_7, XKB_KEY_ampersand,                  6),
 	TAGKEYS(          XKB_KEY_8, XKB_KEY_asterisk,                   7),
 	TAGKEYS(          XKB_KEY_9, XKB_KEY_parenleft,                  8),
-	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_Q,          quit,           {0} },
+	{ MODKEY|WLR_MODIFIER_CTRL|WLR_MODIFIER_SHIFT, XKB_KEY_Escape, quit, {0} },
 	{ MODKEY,                    XKB_KEY_s,          swallowspit,    {.i = 0} },
+	{ MODKEY,                    XKB_KEY_backslash,  scratchtraymenu,{0} },
+	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_bar,        sendtoscratchtray,{0} },
 
 	/* Ctrl-Alt-Backspace and Ctrl-Alt-Fx used to be handled by X server */
 	{ WLR_MODIFIER_CTRL|WLR_MODIFIER_ALT,XKB_KEY_Terminate_Server, quit, {0} },

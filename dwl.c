@@ -2,6 +2,7 @@
  * See LICENSE file for copyright and license details.
  */
 #include <assert.h>
+#include <fcntl.h>
 #include <getopt.h>
 #include <libinput.h>
 #include <limits.h>
@@ -71,12 +72,13 @@
 #define MAX(A, B)               ((A) > (B) ? (A) : (B))
 #define MIN(A, B)               ((A) < (B) ? (A) : (B))
 #define CLEANMASK(mask)         (mask & ~WLR_MODIFIER_CAPS)
-#define VISIBLEON(C, M)         ((M) && (C)->mon == (M) && ((C)->tags & (M)->tagset[(M)->seltags]) && !(C)->swallowedby)
+#define VISIBLEON(C, M)         ((M) && (C)->mon == (M) && ((C)->tags & (M)->tagset[(M)->seltags]) && !(C)->swallowedby && !(C)->isinscratchtray)
 #define LENGTH(X)               (sizeof X / sizeof X[0])
 #define END(A)                  ((A) + LENGTH(A))
 #define TAGMASK                 ((1 << LENGTH(tags)) - 1)
 #define LISTEN(E, L, H)         wl_signal_add((E), ((L)->notify = (H), (L)))
 #define IDLE_NOTIFY_ACTIVITY    wlr_idle_notify_activity(idle, seat), wlr_idle_notifier_v1_notify_activity(idle_notifier, seat)
+#define SANITIZE_NULL_STR(x)    (x) == NULL ? "(null)" : (x)
 
 /* enums */
 enum { CurNormal, CurPressed, CurMove, CurResize }; /* cursor */
@@ -144,6 +146,8 @@ struct Client {
 	int isterminal;
 	pid_t pid;
 	Client *swallowing, *swallowedby; // the terminal gets swallowed by the child
+	int isinscratchtray;
+	// TODO: if you add anything here, make sure to add logic to copy it over in substitute()
 };
 
 typedef struct {
@@ -383,6 +387,11 @@ static Client *termforwin(Client *w);
 static void substitute(Client *c, Client *w);
 static int applyswallowrules(Client *c);
 static void swallowspit(const Arg *arg);
+// Scratchtray
+static void sendtoscratchtray(const Arg *arg);
+static void scratchtraymenu(const Arg *arg);
+static int readscratchtrayfd(int fd, uint32_t mask, void *data);
+static void scratchshow(Client *c);
 
 /* variables */
 static const char broken[] = "broken";
@@ -438,6 +447,11 @@ static Monitor **mons_sorted;
 
 static unsigned int global_seltags = 0;
 static unsigned int global_tagset[2] = {1, 1};
+
+static size_t scratchtray_length = 0; /* length of the below buffer */
+static Client **scratchtray_options = NULL;
+static struct wl_event_source *scratchtray_fd_event_source = NULL;
+static size_t scratchtray_selected;
 
 struct wlr_pointer_constraints_v1 *pointer_constraints;
 struct wlr_pointer_constraint_v1 *active_constraint;
@@ -1234,8 +1248,6 @@ defaultgaps(const Arg *arg)
 	setgaps(gappoh, gappov, gappih, gappiv);
 }
 
-#define SANITIZE_NULL_STR(x) x == NULL ? "(null)" : x
-
 void
 describeclient(const Arg *arg)
 {
@@ -1261,8 +1273,6 @@ describeclient(const Arg *arg)
 		}
 	}
 }
-
-#undef SANITIZE_NULL_STR
 
 void
 destroyidleinhibitor(struct wl_listener *listener, void *data)
@@ -3308,6 +3318,8 @@ substitute(Client *c, Client *w)
 	c->mon = w->mon;
 	c->tags = w->tags;
 	c->prev = w->prev;
+	c->isinscratchtray = w->isinscratchtray;
+	w->isinscratchtray = 0;
 	resize(c, w->geom, 0, w->bw);
 	wl_list_remove(&c->link);
 	wl_list_remove(&c->flink);
@@ -3395,6 +3407,164 @@ swallowspit(const Arg *arg) {
 			}
 			wlr_scene_node_set_enabled(&p->scene->node, 0);
 			arrange(c->mon);
+		}
+	}
+}
+
+
+void
+sendtoscratchtray(const Arg *arg)
+{
+	Client *c = focustop(selmon);
+	if (!c)
+		return;
+	c->isinscratchtray = 1;
+	c->tags = 0;
+	arrange(c->mon);
+	focusclient(focustop(selmon), 1);
+}
+
+void
+scratchtraymenu(const Arg *arg)
+{
+	// go through all this effort to nonblock and avoid errors because I really don't want my desktop to segfault
+	if (!scratchtraymenucmd || scratchtray_fd_event_source) {
+		return;
+	}
+	int pipetomenu[2], pipetodwl[2];
+	if (pipe(pipetodwl) < 0)
+		return;
+	if (fcntl(pipetodwl[0], F_SETFL, O_NONBLOCK) < 0 || pipe(pipetomenu) < 0) {
+		close(pipetodwl[0]);
+		close(pipetodwl[1]);
+		return;
+	}
+	if ((child_pid = fork()) < 0) {
+		close(pipetomenu[0]);
+		close(pipetomenu[1]);
+		close(pipetodwl[0]);
+		close(pipetodwl[1]);
+		return;
+	}
+	if (child_pid == 0) {
+		dup2(pipetomenu[0], STDIN_FILENO);
+		dup2(pipetodwl[1], STDOUT_FILENO);
+		close(pipetomenu[0]);
+		close(pipetomenu[1]);
+		close(pipetodwl[0]);
+		close(pipetodwl[1]);
+		execl("/bin/sh", "/bin/sh", "-c", scratchtraymenucmd, NULL);
+		die("scratchtraymenu: execl:");
+	}
+	// setup the options and send to the menu
+	Client *c;
+	scratchtray_length = 0;
+	scratchtray_selected = 0;
+	// first find size to allocate buffer (commit to this size even if it changes), then put them in
+	wl_list_for_each(c, &clients, link) {
+		if (c->isinscratchtray) {
+			scratchtray_length++;
+		}
+	}
+	if (scratchtray_length > 0) { // realloc with size 0 can break things
+		scratchtray_options = erealloc(scratchtray_options, scratchtray_length * sizeof(Client*));
+	}
+	int i = 0;
+	wl_list_for_each(c, &clients, link) {
+		if (i >= scratchtray_length) {
+			break;
+		}
+		if (c->isinscratchtray) {
+			// send option to menu stdin
+			if (dprintf(pipetomenu[1], "%d: (%s) %s\n",
+						i,
+						SANITIZE_NULL_STR(client_get_appid(c)),
+						SANITIZE_NULL_STR(client_get_title(c))) < 0) {
+				break;
+			}
+			// if it succeeded, mark it down
+			scratchtray_options[i] = c;
+			i++;
+		}
+	}
+	// readjust count to how many are actually ended up in the buffer
+	scratchtray_length = MIN(scratchtray_length, i);
+	close(pipetomenu[0]);
+	close(pipetomenu[1]);
+	scratchtray_fd_event_source = wl_event_loop_add_fd(wl_display_get_event_loop(dpy), pipetodwl[0], WL_EVENT_READABLE, readscratchtrayfd, NULL);
+	close(pipetodwl[1]);
+}
+
+int
+readscratchtrayfd(int fd, uint32_t mask, void *data)
+{
+	if (mask & WL_EVENT_ERROR) { // hangup by itself isn't an error, means dmenu exited
+		goto close;
+	}
+	if (mask & WL_EVENT_HANGUP && !(mask & WL_EVENT_READABLE)) {
+		// dmenu canceled probably
+		goto close;
+	}
+	char buf[4] = {0}; // should never need more digits
+	ssize_t totalread = 0;
+	while(true) {
+		ssize_t numread = read(fd, buf, LENGTH(buf));
+		if (numread == -1) {
+			if (errno == EAGAIN) {
+				// try again later
+				return 0;
+			}
+			// it's shagged
+			goto close;
+		} else if (numread == 0) {
+			// finished reading
+			goto finish;
+		} else {
+			for (int i = 0; i < numread; i++) {
+				if (buf[i] == '\n' || buf[i] == '\0')  {
+					goto finish;
+				} else if (buf[i] < '0' || buf[i] > '9') {
+					// catches the -1 case
+					goto close;
+				}
+				scratchtray_selected = scratchtray_selected * 10 + (buf[i] - '0');
+			}
+		}
+	}
+finish:
+	scratchshow(scratchtray_options[MIN(scratchtray_selected, scratchtray_length)]);
+close:
+	close(fd);
+	wl_event_source_remove(scratchtray_fd_event_source);
+	scratchtray_fd_event_source = NULL;
+	return 0;
+}
+
+void
+scratchshow(Client *c)
+{
+	if (!selmon) {
+		return;
+	}
+	// make sure the client is still alive
+	Client *check;
+	wl_list_for_each(check, &clients, link) {
+		if (c == check) {
+			if (!c->isfullscreen) {
+				// just center it on the focused monitor
+				c->geom.width = MIN(c->geom.width, selmon->w.width - scratchmingaph * 2);
+				c->geom.height = MIN(c->geom.height, selmon->w.height - scratchmingapv * 2);
+				c->geom.x = (selmon->w.width - c->geom.width) / 2 + selmon->m.x;
+				c->geom.y = (selmon->w.height - c->geom.height) / 2 + selmon->m.y;
+				setfloating(c, 1);
+			}
+			c->tags = selmon->tagset[selmon->seltags];
+			setmon(c, selmon, c->tags);
+			c->isinscratchtray = 0;
+			wlr_scene_node_set_enabled(&c->scene->node, 1);
+			focusclient(c, 1);
+			printstatus();
+			return;
 		}
 	}
 }
