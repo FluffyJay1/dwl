@@ -1,7 +1,6 @@
 /* appearance */
 static const int sloppyfocus        = 1;  /* focus follows mouse */
 static const int bypass_surface_visibility = 0;  /* 1 means idle inhibitors will disable idle tracking even if it's surface isn't visible  */
-static const unsigned int borderpx  = 2;  /* border pixel of windows */
 static const int lockfullscreen     = 1;  /* 1 will force focus on the fullscreen window */
 static const unsigned int gappih    = 8;       /* horiz inner gap between windows */
 static const unsigned int gappiv    = 8;       /* vert inner gap between windows */
@@ -9,10 +8,6 @@ static const unsigned int gappoh    = 8;       /* horiz outer gap between window
 static const unsigned int gappov    = 8;       /* vert outer gap between windows and screen edge */
 static const int smartgaps          = 1;        /* 1 means no outer gap when there is only one window */
 static const int monoclegaps        = 0;        /* 1 means outer gaps in monocle layout */
-static const float rootcolor[]      = {0.3, 0.3, 0.3, 1.0};
-static const float bordercolor[]    = {0.07, 0.09, 0.11, 1.0};
-static const float floatcolor[]		= {0.13, 0.13, 0.07, 1.0};
-static const float focuscolor[]     = {0.27, 0.53, 0.72, 1.0};
 /* To conform the xdg-protocol, set the alpha to zero to restore the old behavior */
 static const float fullscreen_bg[]  = {0.1, 0.1, 0.1, 1.0};
 static const int smartborders       = 1;

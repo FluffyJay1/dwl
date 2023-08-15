@@ -66,6 +66,7 @@
 #include <xcb/xcb_icccm.h>
 #endif
 
+#include "preconfig.h"
 #include "util.h"
 
 /* macros */
@@ -112,7 +113,7 @@ struct Client {
 	struct wlr_box geom;  /* layout-relative, includes border */
 	Monitor *mon;
 	struct wlr_scene_tree *scene;
-	struct wlr_scene_rect *border[4]; /* top, bottom, left, right */
+	struct wlr_scene_rect *border[LENGTH(borderpx)][4]; /* array of {top, bottom, left, right} */
 	struct wlr_scene_tree *scene_surface;
 	struct wl_list link;
 	struct wl_list flink;
@@ -392,6 +393,7 @@ static void sendtoscratchtray(const Arg *arg);
 static void scratchtraymenu(const Arg *arg);
 static int readscratchtrayfd(int fd, uint32_t mask, void *data);
 static void scratchshow(Client *c);
+static void setbordercolor(Client *c, float color[LENGTH(borderpx)][4]);
 
 /* variables */
 static const char broken[] = "broken";
@@ -1143,7 +1145,7 @@ createnotify(struct wl_listener *listener, void *data)
 	/* Allocate a Client for this surface */
 	c = xdg_surface->data = ecalloc(1, sizeof(*c));
 	c->surface.xdg = xdg_surface;
-	c->bw = borderpx;
+	c->bw = borderpxsum;
 
 	// swallow
 	wl_client_get_credentials(c->surface.xdg->client->client, &c->pid, NULL, NULL);
@@ -1416,8 +1418,7 @@ focusclient(Client *c, int lift)
 		/* Don't change border color if there is an exclusive focus or we are
 		 * handling a drag operation */
 		if (!exclusive_focus && !seat->drag)
-			for (i = 0; i < 4; i++)
-				wlr_scene_rect_set_color(c->border[i], focuscolor);
+			setbordercolor(c, focuscolor);
 	}
 
 	/* Deactivate old client if focus is changing */
@@ -1436,9 +1437,8 @@ focusclient(Client *c, int lift)
 		/* Don't deactivate old client if the new one wants focus, as this causes issues with winecfg
 		 * and probably other clients */
 		} else if (w && !client_is_unmanaged(w) && (!c || !client_wants_focus(c))) {
-			float const *color = w->isfloating ? floatcolor : bordercolor;
-			for (i = 0; i < 4; i++)
-				wlr_scene_rect_set_color(w->border[i], color);
+			float const **color = w->isfloating ? floatcolor : bordercolor;
+			setbordercolor(w, color);
 
 			client_activate_surface(old, 0);
 			if (w->foreign_toplevel) {
@@ -1873,8 +1873,8 @@ mapnotify(struct wl_listener *listener, void *data)
 		client_get_geometry(c, &c->geom);
 		/* Unmanaged clients always are floating */
 		wlr_scene_node_reparent(&c->scene->node, layers[LyrFloat]);
-		wlr_scene_node_set_position(&c->scene->node, c->geom.x + borderpx,
-			c->geom.y + borderpx);
+		wlr_scene_node_set_position(&c->scene->node, c->geom.x + borderpxsum,
+			c->geom.y + borderpxsum);
 		if (client_wants_focus(c)) {
 			focusclient(c, 1);
 			exclusive_focus = c;
@@ -1883,9 +1883,11 @@ mapnotify(struct wl_listener *listener, void *data)
 	}
 #endif
 
-	for (i = 0; i < 4; i++) {
-		c->border[i] = wlr_scene_rect_create(c->scene, 0, 0, bordercolor);
-		c->border[i]->node.data = c;
+	for (int borderind = 0; borderind < LENGTH(borderpx); borderind++) {
+		for (i = 0; i < 4; i++) {
+			c->border[borderind][i] = wlr_scene_rect_create(c->scene, 0, 0, bordercolor[borderind]);
+			c->border[borderind][i]->node.data = c;
+		}
 	}
 
 	/* Initialize client geometry with room for border */
@@ -2314,19 +2316,25 @@ resize(Client *c, struct wlr_box geo, int interact, int draw_borders)
 	struct wlr_box *bbox = interact ? &sgeom : &c->mon->w;
 	client_set_bounds(c, geo.width, geo.height);
 	c->geom = geo;
-	c->bw = draw_borders ? borderpx : 0;
+	c->bw = draw_borders ? borderpxsum : 0;
 	applybounds(c, bbox);
 
 	/* Update scene-graph, including borders */
 	wlr_scene_node_set_position(&c->scene->node, c->geom.x, c->geom.y);
 	wlr_scene_node_set_position(&c->scene_surface->node, c->bw, c->bw);
-	wlr_scene_rect_set_size(c->border[0], c->geom.width, c->bw);
-	wlr_scene_rect_set_size(c->border[1], c->geom.width, c->bw);
-	wlr_scene_rect_set_size(c->border[2], c->bw, c->geom.height - 2 * c->bw);
-	wlr_scene_rect_set_size(c->border[3], c->bw, c->geom.height - 2 * c->bw);
-	wlr_scene_node_set_position(&c->border[1]->node, 0, c->geom.height - c->bw);
-	wlr_scene_node_set_position(&c->border[2]->node, 0, c->bw);
-	wlr_scene_node_set_position(&c->border[3]->node, c->geom.width - c->bw, c->bw);
+	int sum = 0;
+	for (int borderind = 0; borderind < LENGTH(borderpx); borderind++) {
+		int size = draw_borders ? borderpx[borderind] : 0;
+		wlr_scene_rect_set_size(c->border[borderind][0], c->geom.width - sum * 2, size);
+		wlr_scene_rect_set_size(c->border[borderind][1], c->geom.width - sum * 2, size);
+		wlr_scene_rect_set_size(c->border[borderind][2], size, c->geom.height - 2 * (size + sum));
+		wlr_scene_rect_set_size(c->border[borderind][3], size, c->geom.height - 2 * (size + sum));
+		wlr_scene_node_set_position(&c->border[borderind][0]->node, sum, sum);
+		wlr_scene_node_set_position(&c->border[borderind][1]->node, sum, c->geom.height - size - sum);
+		wlr_scene_node_set_position(&c->border[borderind][2]->node, sum, size + sum);
+		wlr_scene_node_set_position(&c->border[borderind][3]->node, c->geom.width - sum - size, size + sum);
+		sum += size;
+	}
 
 	/* this is a no-op if size hasn't changed */
 	c->resize = client_set_size(c, c->geom.width - 2 * c->bw,
@@ -2431,8 +2439,7 @@ setfloating(Client *c, int floating)
 	if (c->isfloating && !c->bw)
 		resize(c, c->geom, 0, 1);
 	if (!grabc && floating && c != focustop(selmon))
-		for (int i = 0; i < 4; i++)
-			wlr_scene_rect_set_color(c->border[i], floatcolor);
+		setbordercolor(c, floatcolor);
 	arrange(c->mon);
 	printstatus();
 }
@@ -2443,7 +2450,7 @@ setfullscreen(Client *c, int fullscreen)
 	c->isfullscreen = fullscreen;
 	if (!c->mon)
 		return;
-	c->bw = fullscreen ? 0 : borderpx;
+	c->bw = fullscreen ? 0 : borderpxsum;
 	client_set_fullscreen(c, fullscreen);
 	wlr_scene_node_reparent(&c->scene->node, layers[fullscreen
 			? LyrFS : c->isfloating ? LyrFloat : LyrTile]);
@@ -3566,6 +3573,16 @@ scratchshow(Client *c)
 	}
 }
 
+void
+setbordercolor(Client *c, float color[LENGTH(borderpx)][4])
+{
+	for (int borderind = 0; borderind < LENGTH(borderpx); borderind++) {
+		for (int i = 0; i < 4; i++) {
+			wlr_scene_rect_set_color(c->border[borderind][i], color[borderind]);
+		}
+	}
+}
+
 #ifdef XWAYLAND
 void
 activatex11(struct wl_listener *listener, void *data)
@@ -3605,7 +3622,7 @@ createnotifyx11(struct wl_listener *listener, void *data)
 	c = xsurface->data = ecalloc(1, sizeof(*c));
 	c->surface.xwayland = xsurface;
 	c->type = xsurface->override_redirect ? X11Unmanaged : X11Managed;
-	c->bw = borderpx;
+	c->bw = borderpxsum;
 
 	// swallow
 	c->pid = xsurface->pid;
