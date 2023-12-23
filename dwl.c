@@ -1437,8 +1437,7 @@ focusclient(Client *c, int lift)
 		/* Don't deactivate old client if the new one wants focus, as this causes issues with winecfg
 		 * and probably other clients */
 		} else if (w && !client_is_unmanaged(w) && (!c || !client_wants_focus(c))) {
-			float const **color = w->isfloating ? floatcolor : bordercolor;
-			setbordercolor(w, color);
+			setbordercolor(w, w->isfloating ? floatcolor : bordercolor);
 
 			client_activate_surface(old, 0);
 			if (w->foreign_toplevel) {
