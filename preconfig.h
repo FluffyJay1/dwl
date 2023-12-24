@@ -14,3 +14,8 @@ static const float focuscolor[][4] = {
 	{0.07, 0.15, 0.15, 0.8},
 	{0.27, 0.53, 0.72, 1.0},
 };
+static const float urgentcolor[][4] = {
+	{0.2, 0.02, 0.0, 0.8},
+	{1.0, 0.8, 0.0, 1.0},
+};
+

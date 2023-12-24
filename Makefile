@@ -5,7 +5,7 @@ include config.mk
 
 # flags for compiling
 DWLCPPFLAGS = -I. -DWLR_USE_UNSTABLE -D_POSIX_C_SOURCE=200809L -DVERSION=\"$(VERSION)\" $(XWAYLAND)
-DWLDEVCFLAGS = -pedantic -Wall -Wextra -Wdeclaration-after-statement -Wno-unused-parameter -Wno-sign-compare -Wshadow -Wunused-macros\
+DWLDEVCFLAGS = -g -pedantic -Wall -Wextra -Wdeclaration-after-statement -Wno-unused-parameter -Wno-sign-compare -Wshadow -Wunused-macros\
 	-Werror=strict-prototypes -Werror=implicit -Werror=return-type -Werror=incompatible-pointer-types
 
 # CFLAGS / LDFLAGS
@@ -16,7 +16,7 @@ LDLIBS    = `$(PKG_CONFIG) --libs $(PKGS)` $(LIBS)
 all: dwl
 dwl: dwl.o util.o
 	$(CC) dwl.o util.o $(LDLIBS) $(LDFLAGS) $(DWLCFLAGS) -o $@
-dwl.o: dwl.c config.mk config.h preconfig.h client.h xdg-shell-protocol.h wlr-layer-shell-unstable-v1-protocol.h pointer-constraints-unstable-v1-protocol.h
+dwl.o: dwl.c config.mk config.h preconfig.h client.h cursor-shape-v1-protocol.h xdg-shell-protocol.h wlr-layer-shell-unstable-v1-protocol.h pointer-constraints-unstable-v1-protocol.h
 util.o: util.c util.h
 
 # wayland-scanner is a tool which generates C headers and rigging for Wayland
@@ -34,6 +34,9 @@ pointer-constraints-unstable-v1-protocol.h:
 wlr-layer-shell-unstable-v1-protocol.h:
 	$(WAYLAND_SCANNER) server-header \
 		protocols/wlr-layer-shell-unstable-v1.xml $@
+cursor-shape-v1-protocol.h:
+	$(WAYLAND_SCANNER) server-header \
+		$(WAYLAND_PROTOCOLS)/staging/cursor-shape/cursor-shape-v1.xml $@
 
 config.h:
 	cp config.def.h $@
@@ -43,7 +46,7 @@ clean:
 dist: clean
 	mkdir -p dwl-$(VERSION)
 	cp -R LICENSE* Makefile README.md client.h config.def.h\
-		config.mk protocols dwl.1 dwl.c util.c util.h\
+		config.mk protocols dwl.1 dwl.c util.c util.h dwl.desktop\
 		dwl-$(VERSION)
 	tar -caf dwl-$(VERSION).tar.gz dwl-$(VERSION)
 	rm -rf dwl-$(VERSION)
@@ -55,10 +58,11 @@ install: dwl
 	mkdir -p $(DESTDIR)$(MANDIR)/man1
 	cp -f dwl.1 $(DESTDIR)$(MANDIR)/man1
 	chmod 644 $(DESTDIR)$(MANDIR)/man1/dwl.1
-	install -Dm 644 dwl.desktop $(DESKTOP)/dwl.desktop
+	mkdir -p $(DESTDIR)$(DATADIR)/wayland-sessions
+	cp -f dwl.desktop $(DESTDIR)$(DATADIR)/wayland-sessions/dwl.desktop
+	chmod 644 $(DESTDIR)$(DATADIR)/wayland-sessions/dwl.desktop
 uninstall:
-	rm -f $(DESTDIR)$(PREFIX)/bin/dwl $(DESTDIR)$(MANDIR)/man1/dwl.1
-	rm -f $(DESKTOP)/dwl.desktop
+	rm -f $(DESTDIR)$(PREFIX)/bin/dwl $(DESTDIR)$(MANDIR)/man1/dwl.1 $(DESTDIR)$(DATADIR)/wayland-sessions/dwl.desktop
 
 .SUFFIXES: .c .o
 .c.o:

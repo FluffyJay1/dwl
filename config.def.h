@@ -1,3 +1,8 @@
+/* Taken from https://github.com/djpohly/dwl/issues/466 */
+#define COLOR(hex)    { ((hex >> 24) & 0xFF) / 255.0f, \
+                        ((hex >> 16) & 0xFF) / 255.0f, \
+                        ((hex >> 8) & 0xFF) / 255.0f, \
+                        (hex & 0xFF) / 255.0f }
 /* appearance */
 static const int sloppyfocus        = 1;  /* focus follows mouse */
 static const int bypass_surface_visibility = 0;  /* 1 means idle inhibitors will disable idle tracking even if it's surface isn't visible  */
@@ -13,6 +18,7 @@ static const float rootcolor[]      = {0.3, 0.3, 0.3, 1.0};
 static const float bordercolor[]    = {0.5, 0.5, 0.5, 1.0};
 static const float floatcolor[]		= {1.0, 0.0, 0.0, 0.0};
 static const float focuscolor[]     = {1.0, 0.0, 0.0, 1.0};
+static const float urgentcolor[]    = COLOR(0xff0000ff);
 /* To conform the xdg-protocol, set the alpha to zero to restore the old behavior */
 static const float fullscreen_bg[]  = {0.1, 0.1, 0.1, 1.0};
 static const int smartborders       = 1;
@@ -24,8 +30,11 @@ static const int mons_view_same_tag = 0; /* Whether changing which tag to view a
 /* pointer constraints */
 static const int allow_constrain      = 1;
 
-/* tagging */
-static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
+/* tagging - TAGCOUNT must be no greater than 31 */
+#define TAGCOUNT (9)
+
+/* logging */
+static int log_level = WLR_ERROR;
 
 static const Rule rules[] = {
 	/* app_id     title       tags mask     isfloating   monitor */
@@ -45,12 +54,12 @@ static const Layout layouts[] = {
 
 /* monitors */
 static const MonitorRule monrules[] = {
-	/* name       mfact nmaster scale layout       rotate/reflect */
+	/* name       mfact nmaster scale layout       rotate/reflect                x    y */
 	/* example of a HiDPI laptop monitor:
-	{ "eDP-1",    0.5,  1,      2,    &layouts[0], WL_OUTPUT_TRANSFORM_NORMAL },
+	{ "eDP-1",    0.5,  1,      2,    &layouts[0], WL_OUTPUT_TRANSFORM_NORMAL,   -1,  -1 },
 	*/
 	/* defaults */
-	{ NULL,       0.55, 1,      1,    &layouts[0], WL_OUTPUT_TRANSFORM_NORMAL },
+	{ NULL,       0.55, 1,      1,    &layouts[0], WL_OUTPUT_TRANSFORM_NORMAL,   -1,  -1 },
 };
 
 /*
@@ -211,6 +220,9 @@ static const Key keys[] = {
 
 	/* Ctrl-Alt-Backspace and Ctrl-Alt-Fx used to be handled by X server */
 	{ WLR_MODIFIER_CTRL|WLR_MODIFIER_ALT,XKB_KEY_Terminate_Server, quit, {0} },
+	/* Ctrl-Alt-Fx is used to switch to another VT, if you don't know what a VT is
+	 * do not remove them.
+	 */
 #define CHVT(n) { WLR_MODIFIER_CTRL|WLR_MODIFIER_ALT,XKB_KEY_XF86Switch_VT_##n, chvt, {.ui = (n)} }
 	CHVT(1), CHVT(2), CHVT(3), CHVT(4), CHVT(5), CHVT(6),
 	CHVT(7), CHVT(8), CHVT(9), CHVT(10), CHVT(11), CHVT(12),
