@@ -18,7 +18,7 @@ static const int smartbargapbot = 8; // lower gap (pixels) if we in smartgaps mo
 static const char cursortheme[]     = "Future-cyan"; /* theme from /usr/share/cursors/xorg-x11 */
 static const unsigned int cursorsize = 24;
 static const int cursor_timeout = 5;
-static const int mons_view_same_tag = 1; /* Whether changing which tag to view affects all monitors or just the current one */
+static const int mons_view_same_tag = 0; /* Whether changing which tag to view affects all monitors or just the current one */
 static const int scratchmingapv = 64; /* min outer vertical gap for items brought from the scratchtray */
 static const int scratchmingaph = 64; /* min outer horizontal gap for items brought from the scratchtray */
 
