@@ -2395,11 +2395,11 @@ resize(Client *c, struct wlr_box geo, int interact, int draw_borders, int smart_
 		int size = draw_borders ? borderpx[borderind] : 0;
 		int bottomsize = draw_borders || smart_border ? borderpx[borderind] : 0;
 		wlr_scene_rect_set_size(c->border[borderind][0], c->geom.width - sum * 2, size);
-		wlr_scene_rect_set_size(c->border[borderind][1], c->geom.width - bottomsum * 2, bottomsize);
+		wlr_scene_rect_set_size(c->border[borderind][1], c->geom.width - sum * 2, bottomsize);
 		wlr_scene_rect_set_size(c->border[borderind][2], size, c->geom.height - 2 * (size + sum));
 		wlr_scene_rect_set_size(c->border[borderind][3], size, c->geom.height - 2 * (size + sum));
 		wlr_scene_node_set_position(&c->border[borderind][0]->node, sum, sum);
-		wlr_scene_node_set_position(&c->border[borderind][1]->node, bottomsum, c->geom.height - bottomsize - bottomsum);
+		wlr_scene_node_set_position(&c->border[borderind][1]->node, sum, c->geom.height - bottomsize - bottomsum);
 		wlr_scene_node_set_position(&c->border[borderind][2]->node, sum, size + sum);
 		wlr_scene_node_set_position(&c->border[borderind][3]->node, c->geom.width - sum - size, size + sum);
 		sum += size;
