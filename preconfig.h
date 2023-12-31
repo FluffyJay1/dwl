@@ -1,7 +1,7 @@
 /* simple configuration settings that can be included early in dwl.c */
 static const unsigned int borderpx[] = {2, 2}; /* borders pixel of windows */
 static const unsigned int borderpxsum = 2;
-static const float rootcolor[]      = {0.3, 0.3, 0.3, 1.0};
+static const float rootcolor[]      = {0.0, 0.0, 0.0, 1.0};
 static const float bordercolor[][4] = {
 	{0.07, 0.08, 0.10, 0.8}, /* outer */
 	{0.07, 0.09, 0.11, 1.0} /* inner */
