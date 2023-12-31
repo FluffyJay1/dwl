@@ -2910,9 +2910,10 @@ tag(const Arg *arg)
 		return;
 
 	sel->tags = arg->ui & TAGMASK;
-	focusclient(focustop(selmon), 1);
-	arrange(selmon);
-	printstatus();
+	/* focusclient(focustop(selmon), 1); */
+	/* arrange(selmon); */
+	/* printstatus(); */
+	view(arg);
 }
 
 void
