@@ -415,6 +415,7 @@ static void sendtoscratchtray(const Arg *arg);
 static void scratchtraymenu(const Arg *arg);
 static int readscratchtrayfd(int fd, uint32_t mask, void *data);
 static void scratchshow(Client *c);
+static void updatescratchstatus(void);
 
 /* variables */
 static const char broken[] = "broken";
@@ -482,6 +483,8 @@ static size_t scratchtray_length = 0; /* length of the below buffer */
 static Client **scratchtray_options = NULL;
 static struct wl_event_source *scratchtray_fd_event_source = NULL;
 static size_t scratchtray_selected;
+#define SCRATCHTRAY_STATUS_MAX_DIGITS 1
+static char scratchtray_status[SCRATCHTRAY_STATUS_MAX_DIGITS + 3] = { 0 };
 
 struct wlr_pointer_constraints_v1 *pointer_constraints;
 struct wlr_pointer_constraint_v1 *active_constraint;
@@ -1989,7 +1992,7 @@ monocle(Monitor *m)
 		n++;
 	}
 	if (n)
-		snprintf(m->ltsymbol, LENGTH(m->ltsymbol) - 1, "[%d]", n);
+		snprintf(m->ltsymbol, LENGTH(m->ltsymbol), "[%d]", n);
 	if ((c = focustop(m)))
 		wlr_scene_node_raise_to_top(&c->scene->node);
 }
@@ -2250,6 +2253,7 @@ printstatus(void)
 	uint32_t occ, urg, sel;
 	const char *appid, *title;
 
+	updatescratchstatus();
 	for (int i = 0; i < mons_sorted_length; i++) {
 		Monitor *m = mons_sorted[i];
 		if (!m->wlr_output->enabled) {
@@ -2284,6 +2288,7 @@ printstatus(void)
 		printf("%s tags %u %u %u %u\n", m->wlr_output->name, occ,
 				m->tagset[m->seltags], sel, urg);
 		printf("%s layout %s\n", m->wlr_output->name, m->ltsymbol);
+		printf("%s scratch %s\n", m->wlr_output->name, scratchtray_status);
 	}
 	printf("cycle\n");
 	fflush(stdout);
@@ -3463,7 +3468,7 @@ getparentprocess(pid_t p)
 
 	FILE *f;
 	char buf[256];
-	snprintf(buf, sizeof(buf) - 1, "/proc/%u/stat", (unsigned)p);
+	snprintf(buf, sizeof(buf), "/proc/%u/stat", (unsigned)p);
 
 	if (!(f = fopen(buf, "r")))
 		return 0;
@@ -3621,6 +3626,24 @@ scratchtraymenu(const Arg *arg)
 	if (!scratchtraymenucmd || scratchtray_fd_event_source) {
 		return;
 	}
+	Client *c, *lastinscratch;
+	scratchtray_length = 0;
+	scratchtray_selected = 0;
+	// first find size to allocate buffer (commit to this size even if it changes), then put them in
+	wl_list_for_each(c, &clients, link) {
+		if (c->isinscratchtray) {
+			scratchtray_length++;
+			lastinscratch = c;
+		}
+	}
+	// if < 2 items are in scratchtray, don't need to use the menu
+	if (scratchtray_length == 0) {
+		return;
+	} else if (scratchtray_length == 1) {
+		scratchshow(lastinscratch);
+		return;
+	}
+
 	int pipetomenu[2], pipetodwl[2];
 	if (pipe(pipetodwl) < 0)
 		return;
@@ -3647,18 +3670,8 @@ scratchtraymenu(const Arg *arg)
 		die("scratchtraymenu: execl:");
 	}
 	// setup the options and send to the menu
-	Client *c;
-	scratchtray_length = 0;
-	scratchtray_selected = 0;
-	// first find size to allocate buffer (commit to this size even if it changes), then put them in
-	wl_list_for_each(c, &clients, link) {
-		if (c->isinscratchtray) {
-			scratchtray_length++;
-		}
-	}
-	if (scratchtray_length > 0) { // realloc with size 0 can break things
-		scratchtray_options = erealloc(scratchtray_options, scratchtray_length * sizeof(Client*));
-	}
+	// realloc with size 0 can break things, luckily that's not a problem by this point
+	scratchtray_options = erealloc(scratchtray_options, scratchtray_length * sizeof(Client*));
 	int i = 0;
 	wl_list_for_each(c, &clients, link) {
 		if (i >= scratchtray_length) {
@@ -3695,7 +3708,7 @@ readscratchtrayfd(int fd, uint32_t mask, void *data)
 		// dmenu canceled probably
 		goto close;
 	}
-	char buf[4] = {0}; // should never need more digits
+	char buf[8] = {0}; // should never need more digits
 	ssize_t totalread = 0;
 	while(true) {
 		ssize_t numread = read(fd, buf, LENGTH(buf));
@@ -3746,6 +3759,7 @@ scratchshow(Client *c)
 				c->geom.height = MIN(c->geom.height, selmon->w.height - scratchmingapv * 2);
 				c->geom.x = (selmon->w.width - c->geom.width) / 2 + selmon->m.x;
 				c->geom.y = (selmon->w.height - c->geom.height) / 2 + selmon->m.y;
+				resize(c, c->geom, 0, 1, 0);
 				setfloating(c, 1);
 			}
 			c->tags = selmon->tagset[selmon->seltags];
@@ -3756,6 +3770,38 @@ scratchshow(Client *c)
 			printstatus();
 			return;
 		}
+	}
+}
+
+void
+updatescratchstatus() {
+	Client *c, *lastinscratch;
+	unsigned int len = 0;
+	wl_list_for_each(c, &clients, link) {
+		if (c->isinscratchtray) {
+			len++;
+			lastinscratch = c;
+		}
+	}
+	if (len == 0) {
+		*scratchtray_status = '\0';
+		return;
+	}
+	const char *title = client_get_title(lastinscratch);
+	if (len == 1 && title) {
+		strncpy(scratchtray_status, title, LENGTH(scratchtray_status) - 1);
+		return;
+	}
+	// show number instead
+	if (len >= pow(10, SCRATCHTRAY_STATUS_MAX_DIGITS)) {
+		// number too big, show +s
+		scratchtray_status[0] = '[';
+		scratchtray_status[LENGTH(scratchtray_status) - 2] = ']';
+		for (unsigned int i = 1; i <= LENGTH(scratchtray_status) - 3; i++) {
+			scratchtray_status[i] = '+';
+		}
+	} else {
+		snprintf(scratchtray_status, LENGTH(scratchtray_status), "[%u]", len);
 	}
 }
 
